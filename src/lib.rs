@@ -1,7 +1,8 @@
+use anyhow::{Context, Result};
 use pulldown_cmark::{Parser, html};
 use serde::{Deserialize, Serialize};
 use serde_yaml_ng::from_str;
-use std::{error::Error, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FrontMatter {
@@ -11,7 +12,7 @@ pub struct FrontMatter {
     pub template: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Post {
     pub frontmatter: Option<FrontMatter>,
     pub body: String,
@@ -19,12 +20,16 @@ pub struct Post {
 }
 
 impl Post {
-    pub fn from_file(input_path: PathBuf) -> Result<Post, Box<dyn Error>> {
-        let content = fs::read_to_string(input_path.clone())?;
+    pub fn from_file(input_path: PathBuf) -> Result<Post> {
+        let content = fs::read_to_string(input_path.clone())
+            .with_context(|| format!("Couldn't read the contents of {}", input_path.display()))?;
 
         let (frontmatter, body) = if let Some(rest) = content.strip_prefix("---") {
             if let Some((fm, body)) = rest.split_once("---") {
-                let fm = Some(from_str::<FrontMatter>(fm)?);
+                let fm = Some(
+                    from_str::<FrontMatter>(fm)
+                        .with_context(|| format!("Invalid frontmatter in {:?}", input_path))?,
+                );
                 (fm, body)
             } else {
                 (None, content.as_str())
@@ -37,20 +42,13 @@ impl Post {
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
-        let mut output_path = PathBuf::new();
+        let slug = frontmatter
+            .as_ref()
+            .and_then(|fm| fm.slug.as_deref())
+            .or_else(|| input_path.file_stem().and_then(|s| s.to_str()))
+            .unwrap_or("post1");
 
-        if let Some(fm) = frontmatter.as_ref() {
-            if let Some(slug) = fm.slug.as_ref() {
-                output_path = PathBuf::from("dist").join(slug).join("index.html");
-            }
-        } else {
-            let name = input_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("post1");
-
-            output_path = PathBuf::from("dist").join(name).join("index.html");
-        }
+        let output_path = PathBuf::from("dist").join(slug).join("index.html");
 
         Ok(Post {
             frontmatter,

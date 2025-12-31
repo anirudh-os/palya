@@ -1,34 +1,40 @@
+use anyhow::Result;
 use my_ssg::Post;
-use std::{error::Error, fs::File, io::Write, path::PathBuf};
+use std::{fs::File, io::Write};
 use tera::{Context, Tera};
 use walkdir::WalkDir;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let mut posts: Vec<Post> = Vec::new();
 
     for entry in WalkDir::new("test_bench/content") {
-        if let Ok(entry) = entry {
-            let path = PathBuf::from(entry.path());
-            if let Some(ext) = path.extension() {
-                if ext == "md" {
-                    let post = Post::from_file(path)?;
-
-                    posts.push(post);
-                } else {
-                    continue;
-                }
-            } else {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("Walkdir error: {e}");
                 continue;
             }
-        } else {
+        };
+
+        let path = entry.path();
+
+        if path.extension() != Some(std::ffi::OsStr::new("md")) {
             continue;
+        }
+
+        match Post::from_file(path.to_path_buf()) {
+            Ok(post) => posts.push(post),
+            Err(err) => {
+                eprintln!("Failed to parse {:?}: {err}", path);
+                continue;
+            }
         }
     }
 
+    let tera = Tera::new("test_bench/templates/**/*.html")?;
     for post in posts {
-        let tera = Tera::new("test_bench/templates/**/*.html")?;
         let mut context = Context::new();
-        if let Some(fm) = post.frontmatter.clone() {
+        if let Some(fm) = post.frontmatter.as_ref() {
             context.insert("title", &fm.title);
             context.insert("date", &fm.date);
         }
