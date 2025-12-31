@@ -1,51 +1,48 @@
-use std::{error::Error, fs::{self, File}, io::Write};
-
-use pulldown_cmark::{Parser, html};
-use serde::{Deserialize, Serialize};
-use serde_yaml_ng::from_str;
+use my_ssg::Post;
+use std::{error::Error, fs::File, io::Write, path::PathBuf};
 use tera::{Context, Tera};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct FrontMatter {
-    title: Option<String>,
-    date: Option<String>,
-    slug: Option<String>,
-}
+use walkdir::WalkDir;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let content = fs::read_to_string("test_bench/content/hello.md")?;
+    let mut posts: Vec<Post> = Vec::new();
 
-    let (frontmatter, body) = if let Some(rest) = content.strip_prefix("---") {
-        if let Some((fm, body)) = rest.split_once("---") {
-            let fm = from_str::<FrontMatter>(fm).ok();
-            (fm, body)
+    for entry in WalkDir::new("test_bench/content") {
+        if let Ok(entry) = entry {
+            let path = PathBuf::from(entry.path());
+            if let Some(ext) = path.extension() {
+                if ext == "md" {
+                    let post = Post::from_file(path)?;
+
+                    posts.push(post);
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
         } else {
-            (None, content.as_str())
+            continue;
         }
-    } else {
-        (None, content.as_str())
-    };
-
-    let parser = Parser::new(body);
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-
-    let tera = Tera::new("test_bench/templates/**/*.html")?;
-
-    let mut context = Context::new();
-    if let Some(ref fm) = frontmatter {
-        context.insert("title", &fm.title);
-        context.insert("date", &fm.date);
     }
-    context.insert("content", &html_output);
 
-    let output = tera.render("post.html", &context)?;
+    for post in posts {
+        let tera = Tera::new("test_bench/templates/**/*.html")?;
+        let mut context = Context::new();
+        if let Some(fm) = post.frontmatter.clone() {
+            context.insert("title", &fm.title);
+            context.insert("date", &fm.date);
+        }
+        context.insert("content", &post.body);
 
-    let mut output_file = File::create("output.html")?;
-    output_file.write_all(output.as_bytes())?;
+        let output = tera.render(post.template_name(), &context)?;
 
-    println!("{:?}", frontmatter);
-    println!("{}", html_output);
+        if let Some(parent) = post.output_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut file = File::create(&post.output_path)?;
+        file.write_all(output.as_bytes())?;
+    }
 
     Ok(())
 }
