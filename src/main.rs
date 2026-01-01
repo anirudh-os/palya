@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
-use minijinja::{context, Environment};
+use minijinja::{Environment, context};
 use palya::{Post, load_templates};
+use rayon::prelude::*;
 use std::{
     fs::File,
     io::Write,
@@ -9,31 +10,24 @@ use std::{
 use walkdir::WalkDir;
 
 fn main() -> Result<()> {
-    let mut posts: Vec<Post> = Vec::new();
+    let file_paths: Vec<PathBuf> = WalkDir::new("test_bench/content")
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .map(|e| e.path().to_owned())
+        .filter(|p| p.extension().map_or(false, |e| e == "md"))
+        .collect();
 
-    for entry in WalkDir::new("test_bench/content") {
-        let entry = match entry {
-            Ok(e) => e,
+    let mut posts: Vec<Post> = file_paths
+        .par_iter()
+        .map(|path| Post::from_file(path.clone()))
+        .filter_map(|result| match result {
+            Ok(post) => Some(post),
             Err(e) => {
-                eprintln!("Walkdir error: {e}");
-                continue;
+                eprintln!("Error: {}", e);
+                None
             }
-        };
-
-        let path = entry.path();
-
-        if path.extension() != Some(std::ffi::OsStr::new("md")) {
-            continue;
-        }
-
-        match Post::from_file(path.to_path_buf()) {
-            Ok(post) => posts.push(post),
-            Err(err) => {
-                eprintln!("Failed to parse {:?}: {err}", path);
-                continue;
-            }
-        };
-    }
+        })
+        .collect();
 
     let mut env = Environment::new();
     load_templates(&mut env, Path::new("test_bench/templates"))?;
@@ -45,7 +39,7 @@ fn main() -> Result<()> {
         date_b.cmp(&date_a)
     });
 
-    for post in &posts {
+    posts.par_iter().try_for_each(|post| -> Result<()> {
         let template_name = post.template_name();
 
         let output = env
@@ -58,13 +52,16 @@ fn main() -> Result<()> {
             std::fs::create_dir_all(parent).context("Couldn't create the dorectory")?;
         }
 
-        let mut file = File::create(post.output_path()).context("Couldn't create the output file!")?;
+        let mut file =
+            File::create(post.output_path()).context("Couldn't create the output file!")?;
         file.write_all(output.as_bytes())
             .context("Couldn't write to the output file!")?;
-    }
+        
+        Ok(())
+    })?;
 
     let index_context = context! {
-        posts => posts 
+        posts => posts
     };
 
     let index_output = env
