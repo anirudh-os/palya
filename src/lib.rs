@@ -21,6 +21,7 @@ pub struct FrontMatter {
 pub struct Post {
     pub frontmatter: Option<FrontMatter>,
     pub body: String,
+    pub url: String, // This is the given or calculated slug
 }
 
 #[derive(Serialize)]
@@ -28,6 +29,7 @@ pub struct PostContext<'a> {
     pub title: Option<&'a str>,
     pub date: Option<&'a str>,
     pub content: &'a str,
+    pub url: String,
 }
 
 impl Post {
@@ -53,9 +55,19 @@ impl Post {
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
+        let slug = frontmatter
+            .as_ref()
+            .and_then(|fm| fm.slug.as_deref())
+            .or_else(|| input_path.file_stem().and_then(|s| s.to_str()))
+            .unwrap_or("post1")
+            .to_string();
+
+        let url = format!("/{}/", slug);
+
         Ok(Post {
             frontmatter,
             body: html_output,
+            url,
         })
     }
 
@@ -66,15 +78,14 @@ impl Post {
             .unwrap_or("post.html")
     }
 
-    pub fn output_path(&self, input_path: PathBuf) -> PathBuf {
-        let slug = self
-            .frontmatter
-            .as_ref()
-            .and_then(|fm| fm.slug.as_deref())
-            .or_else(|| input_path.file_stem().and_then(|s| s.to_str()))
-            .unwrap_or("post1");
+    pub fn output_path(&self) -> PathBuf {
+        let slug_path = self
+            .url
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .collect::<PathBuf>();
 
-        PathBuf::from("dist").join(slug).join("index.html")
+        PathBuf::from("dist").join(slug_path).join("index.html")
     }
 
     pub fn as_context(&self) -> PostContext<'_> {
@@ -82,6 +93,7 @@ impl Post {
             title: self.frontmatter.as_ref().and_then(|f| f.title.as_deref()),
             date: self.frontmatter.as_ref().and_then(|f| f.date.as_deref()),
             content: &self.body,
+            url: self.url.clone(),
         }
     }
 }
@@ -92,11 +104,21 @@ pub fn load_templates(env: &mut Environment, dir: &Path) -> Result<()> {
         let path = entry.path();
 
         if path.is_file() {
-            let name = path.file_name().unwrap().to_string_lossy().into_owned(); 
+            let name = path
+                .strip_prefix(dir)
+                .with_context(|| {
+                    format!(
+                        "Couldn't strip the prefix of {}!",
+                        path.to_str().unwrap_or("unknown")
+                    )
+                })?
+                .to_string_lossy()
+                .into_owned();
 
             let content = fs::read_to_string(path)?;
 
-            env.add_template_owned(name, content)?;
+            env.add_template_owned(name.clone(), content)
+                .with_context(|| format!("Couldn't add the template {}", name))?;
         }
     }
     Ok(())

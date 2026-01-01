@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Blog</title>
+</head>
+<body>
+    <h1>Latest Posts</h1>
+    <ul>
+    {% for post in posts %}
+        <li>
+            <span class="date">{{ post.frontmatter.date }}</span>
+            <a href="{{ post.url | safe }}">{{ post.frontmatter.title }}</a>
+        </li>
+    {% endfor %}
+    </ul>
+</body>
+</html>

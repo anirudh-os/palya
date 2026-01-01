@@ -75,7 +75,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "my_ssg"
+name = "palya"
 version = "0.1.0"
 dependencies = [
  "anyhow",
