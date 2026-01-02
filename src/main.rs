@@ -80,8 +80,8 @@ fn main() -> Result<()> {
             fs::create_dir_all(parent).context("Couldn't create the directory")?;
         }
 
-        let mut file =
-            File::create(post.output_path(&args.output)).context("Couldn't create the output file!")?;
+        let mut file = File::create(post.output_path(&args.output))
+            .context("Couldn't create the output file!")?;
         file.write_all(output.as_bytes())
             .context("Couldn't write to the output file!")?;
 
@@ -92,15 +92,20 @@ fn main() -> Result<()> {
         posts => posts
     };
 
-    let index_output = env
-        .get_template("index.j2")
-        .context("Failed to load index.html template")?
-        .render(index_context)
-        .context("Failed to render index.html")?;
+    match env.get_template("index.j2") {
+        Ok(template) => {
+            let index_output = template
+                .render(index_context)
+                .context("Failed to render index.j2")?;
 
-    let index_path = PathBuf::from(&args.output).join("index.html");
-    let mut file = File::create(index_path)?;
-    file.write_all(index_output.as_bytes())?;
+            let index_path = PathBuf::from(&args.output).join("index.html");
+            let mut file = File::create(index_path)?;
+            file.write_all(index_output.as_bytes())?;
+        }
+        Err(_) => {
+            eprintln!("No 'index.j2' found. Skipping home page generation.");
+        }
+    }
 
     Ok(())
 }

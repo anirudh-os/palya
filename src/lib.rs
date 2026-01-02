@@ -20,7 +20,7 @@ pub struct FrontMatter {
 #[derive(Debug, Clone, Serialize)]
 pub struct Post {
     pub frontmatter: Option<FrontMatter>,
-    pub body: String,
+    pub content: String,
     pub url: String, // This is the given or calculated from slug
 }
 
@@ -36,13 +36,16 @@ impl Post {
         let content = fs::read_to_string(input_path.clone())
             .with_context(|| format!("Couldn't read the contents of {}", input_path.display()))?;
 
-        let (frontmatter, body) = if let Some(rest) = content.strip_prefix("---") {
-            if let Some((fm, body)) = rest.split_once("---") {
+        Self::parse(content, input_path)
+    }
+
+    pub fn parse(content: String, input_path: PathBuf) -> Result<Post> {
+        let (frontmatter, content) = if let Some(rest) = content.strip_prefix("---") {
+            if let Some((fm, content)) = rest.split_once("---") {
                 let fm = Some(
-                    from_str::<FrontMatter>(fm)
-                        .with_context(|| format!("Invalid frontmatter in {:?}", input_path))?,
+                    from_str::<FrontMatter>(fm).with_context(|| format!("Couldn't parse the frontmatter of the file {:#?}!", input_path))?
                 );
-                (fm, body)
+                (fm, content)
             } else {
                 (None, content.as_str())
             }
@@ -50,7 +53,7 @@ impl Post {
             (None, content.as_str())
         };
 
-        let parser = Parser::new(body);
+        let parser = Parser::new(content);
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
@@ -65,7 +68,7 @@ impl Post {
 
         Ok(Post {
             frontmatter,
-            body: html_output,
+            content: html_output,
             url,
         })
     }
@@ -74,7 +77,7 @@ impl Post {
         self.frontmatter
             .as_ref()
             .and_then(|fm| fm.template.as_deref())
-            .unwrap_or("post.jinja")
+            .unwrap_or("post.j2")
     }
 
     pub fn output_path(&self, output: &PathBuf) -> PathBuf {
@@ -173,4 +176,57 @@ pub fn copy_static_files(input: &Path, src: Option<PathBuf>, dest: &Path) -> Res
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_parse_valid_post() {
+        let content = r#"---
+                            title: "Unit Test"
+                            date: "2023-01-01"
+                            slug: "test-slug"
+                            ---
+                            # Hello
+                            This is a test."#
+            .to_string();
+        let path = PathBuf::from("dummy.md");
+        let post = Post::parse(content, path).expect("Should parse valid post");
+
+        assert_eq!(post.frontmatter.unwrap().title.unwrap(), "Unit Test");
+        assert_eq!(post.url, "/test-slug/");
+        assert!(post.content.contains("Hello"));
+    }
+
+    #[test]
+    fn test_slug_fallback_from_filename() {
+        let content = r#"---
+                            title: "No Slug"
+                            ---
+                            Content"#
+            .to_string();
+
+        let path = PathBuf::from("posts/my-cool-post.md");
+        let post = Post::parse(content, path).unwrap();
+
+        assert_eq!(post.url, "/my-cool-post/");
+    }
+
+    #[test]
+    fn test_invalid_frontmatter_fails() {
+        let content = r#"---
+                            title: "Broken"
+                            date: :::: 2023 
+                            ---
+                            Content"#
+            .to_string();
+
+        let path = PathBuf::from("bad.md");
+        let result = Post::parse(content, path);
+
+        assert!(result.is_err());
+    }
 }
