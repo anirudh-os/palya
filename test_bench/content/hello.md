@@ -2,7 +2,7 @@
 title: "Hello World"
 date: "2023-10-27"
 slug: "hello-world"
-template: "post.html"
+template: "post.jinja"
 ---
 
 # This is the title in Markdown

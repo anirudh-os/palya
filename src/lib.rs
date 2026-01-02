@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 use minijinja::Environment;
 use pulldown_cmark::{Parser, html};
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,7 @@ pub struct FrontMatter {
 pub struct Post {
     pub frontmatter: Option<FrontMatter>,
     pub body: String,
-    pub url: String, // This is the given or calculated slug
+    pub url: String, // This is the given or calculated from slug
 }
 
 #[derive(Serialize)]
@@ -75,7 +75,7 @@ impl Post {
         self.frontmatter
             .as_ref()
             .and_then(|fm| fm.template.as_deref())
-            .unwrap_or("post.html")
+            .unwrap_or("post.jinja")
     }
 
     pub fn output_path(&self) -> PathBuf {
@@ -121,5 +121,30 @@ pub fn load_templates(env: &mut Environment, dir: &Path) -> Result<()> {
                 .with_context(|| format!("Couldn't add the template {}", name))?;
         }
     }
+    Ok(())
+}
+
+pub fn copy_static_files(src: &Path, dest: &Path) -> Result<()>{
+    if !src.exists() {
+        return Ok(())
+    }
+
+    for entry in WalkDir::new(src) {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            let relative_path = path.strip_prefix(src)?;
+
+            let target_path = dest.join(relative_path);
+
+            if let Some(parent) = target_path.parent() {
+                fs::create_dir_all(parent).with_context(|| format!("A directory specified in {:#?} does not exist and could not be created", target_path))?;
+            }
+
+            fs::copy(path, target_path)?;
+        }
+    }
+
     Ok(())
 }

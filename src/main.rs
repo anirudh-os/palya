@@ -1,15 +1,21 @@
 use anyhow::{Context, Result};
 use minijinja::{Environment, context};
-use palya::{Post, load_templates};
+use palya::{Post, copy_static_files, load_templates};
 use rayon::prelude::*;
 use std::{
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 
 fn main() -> Result<()> {
+    let static_path = Path::new("test_bench/static");
+    let dist_path = Path::new("dist");
+
+    fs::create_dir_all(dist_path).context("Couldn't create the directory")?;
+    copy_static_files(static_path, dist_path)?;
+
     let file_paths: Vec<PathBuf> = WalkDir::new("test_bench/content")
         .into_iter()
         .filter_map(|e| e.ok())
@@ -49,14 +55,14 @@ fn main() -> Result<()> {
             .with_context(|| format!("Couldn't render the template {}!", template_name))?;
 
         if let Some(parent) = post.output_path().parent() {
-            std::fs::create_dir_all(parent).context("Couldn't create the dorectory")?;
+            fs::create_dir_all(parent).context("Couldn't create the directory")?;
         }
 
         let mut file =
             File::create(post.output_path()).context("Couldn't create the output file!")?;
         file.write_all(output.as_bytes())
             .context("Couldn't write to the output file!")?;
-        
+
         Ok(())
     })?;
 
@@ -65,7 +71,7 @@ fn main() -> Result<()> {
     };
 
     let index_output = env
-        .get_template("index.html")
+        .get_template("index.jinja")
         .context("Failed to load index.html template")?
         .render(index_context)
         .context("Failed to render index.html")?;
