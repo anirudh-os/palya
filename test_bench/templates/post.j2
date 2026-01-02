@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }}</title>
+    <title>{{ post.frontmatter.title }}</title>
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
     <header>
-        <h1>{{ title }}</h1>
-        <p>Published on: {{ date }}</p>
+        <h1>{{ post.frontmatter.title }}</h1>
+        <p>Published on: {{ post.frontmatter.date }}</p>
     </header>
 
     <main>
-        {{ content | safe}}
+        {{ post.body | safe}}
     </main>
 
     <footer>

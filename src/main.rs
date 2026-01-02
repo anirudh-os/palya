@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use minijinja::{Environment, context};
-use palya::{Post, copy_static_files, load_templates};
+use palya::{Config, Post, copy_static_files, load_templates};
 use rayon::prelude::*;
 use std::{
     fs::{self, File},
@@ -13,24 +13,30 @@ use walkdir::WalkDir;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(short, long, default_value = "content")]
+    #[arg(short, long)]
     input: PathBuf,
-    #[arg(short, long, default_value = "dist")]
+    #[arg(short, long)]
     output: PathBuf,
-    #[arg(short, long, default_value = "templates")]
+    #[arg(short, long)]
     templates: PathBuf,
-    #[arg(long, default_value = "static")]
-    static_dir: PathBuf,
+    #[arg(long)]
+    static_dir: Option<PathBuf>,
+    #[arg(short, long)]
+    config: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let static_path = Path::new(&args.static_dir);
+    let mut env = Environment::new();
+    load_templates(&mut env, Path::new(&args.templates))?;
+    let config = Config::get_config(&args.input, args.config)?;
+    env.add_global("site", minijinja::Value::from_serialize(config));
+
     let dist_path = Path::new(&args.output);
 
     fs::create_dir_all(dist_path).context("Couldn't create the directory")?;
-    copy_static_files(static_path, dist_path)?;
+    copy_static_files(&args.input, args.static_dir, dist_path)?;
 
     let file_paths: Vec<PathBuf> = WalkDir::new(args.input)
         .into_iter()
@@ -51,9 +57,6 @@ fn main() -> Result<()> {
         })
         .collect();
 
-    let mut env = Environment::new();
-    load_templates(&mut env, Path::new(&args.templates))?;
-
     posts.sort_by(|a, b| {
         let date_a = a.frontmatter.as_ref().and_then(|fm| fm.date.as_deref());
         let date_b = b.frontmatter.as_ref().and_then(|fm| fm.date.as_deref());
@@ -63,11 +66,14 @@ fn main() -> Result<()> {
 
     posts.par_iter().try_for_each(|post| -> Result<()> {
         let template_name = post.template_name();
+        let post_context = context! {
+            post => post,
+        };
 
         let output = env
             .get_template(template_name)
             .with_context(|| format!("Template {} is not found!", template_name))?
-            .render(post.as_context())
+            .render(post_context)
             .with_context(|| format!("Couldn't render the template {}!", template_name))?;
 
         if let Some(parent) = post.output_path(&args.output).parent() {
@@ -87,7 +93,7 @@ fn main() -> Result<()> {
     };
 
     let index_output = env
-        .get_template("index.jinja")
+        .get_template("index.j2")
         .context("Failed to load index.html template")?
         .render(index_context)
         .context("Failed to render index.html")?;
