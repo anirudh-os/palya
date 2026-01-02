@@ -1,5 +1,5 @@
 use anyhow::{Context, Ok, Result};
-use minijinja::Environment;
+use minijinja::{Environment};
 use pulldown_cmark::{Parser, html};
 use serde::{Deserialize, Serialize};
 use serde_yaml_ng::from_str;
@@ -78,14 +78,14 @@ impl Post {
             .unwrap_or("post.jinja")
     }
 
-    pub fn output_path(&self) -> PathBuf {
+    pub fn output_path(&self, output: &PathBuf) -> PathBuf {
         let slug_path = self
             .url
             .split('/')
             .filter(|s| !s.is_empty())
             .collect::<PathBuf>();
 
-        PathBuf::from("dist").join(slug_path).join("index.html")
+        PathBuf::from(output).join(slug_path).join("index.html")
     }
 
     pub fn as_context(&self) -> PostContext<'_> {

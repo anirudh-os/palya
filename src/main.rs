@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use clap::Parser;
 use minijinja::{Environment, context};
 use palya::{Post, copy_static_files, load_templates};
 use rayon::prelude::*;
@@ -9,14 +10,29 @@ use std::{
 };
 use walkdir::WalkDir;
 
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, default_value = "content")]
+    input: PathBuf,
+    #[arg(short, long, default_value = "dist")]
+    output: PathBuf,
+    #[arg(short, long, default_value = "templates")]
+    templates: PathBuf,
+    #[arg(long, default_value = "static")]
+    static_dir: PathBuf,
+}
+
 fn main() -> Result<()> {
-    let static_path = Path::new("test_bench/static");
-    let dist_path = Path::new("dist");
+    let args = Args::parse();
+
+    let static_path = Path::new(&args.static_dir);
+    let dist_path = Path::new(&args.output);
 
     fs::create_dir_all(dist_path).context("Couldn't create the directory")?;
     copy_static_files(static_path, dist_path)?;
 
-    let file_paths: Vec<PathBuf> = WalkDir::new("test_bench/content")
+    let file_paths: Vec<PathBuf> = WalkDir::new(args.input)
         .into_iter()
         .filter_map(|e| e.ok())
         .map(|e| e.path().to_owned())
@@ -36,7 +52,7 @@ fn main() -> Result<()> {
         .collect();
 
     let mut env = Environment::new();
-    load_templates(&mut env, Path::new("test_bench/templates"))?;
+    load_templates(&mut env, Path::new(&args.templates))?;
 
     posts.sort_by(|a, b| {
         let date_a = a.frontmatter.as_ref().and_then(|fm| fm.date.as_deref());
@@ -54,12 +70,12 @@ fn main() -> Result<()> {
             .render(post.as_context())
             .with_context(|| format!("Couldn't render the template {}!", template_name))?;
 
-        if let Some(parent) = post.output_path().parent() {
+        if let Some(parent) = post.output_path(&args.output).parent() {
             fs::create_dir_all(parent).context("Couldn't create the directory")?;
         }
 
         let mut file =
-            File::create(post.output_path()).context("Couldn't create the output file!")?;
+            File::create(post.output_path(&args.output)).context("Couldn't create the output file!")?;
         file.write_all(output.as_bytes())
             .context("Couldn't write to the output file!")?;
 
@@ -76,7 +92,7 @@ fn main() -> Result<()> {
         .render(index_context)
         .context("Failed to render index.html")?;
 
-    let index_path = PathBuf::from("dist/index.html");
+    let index_path = PathBuf::from(&args.output).join("index.html");
     let mut file = File::create(index_path)?;
     file.write_all(index_output.as_bytes())?;
 
