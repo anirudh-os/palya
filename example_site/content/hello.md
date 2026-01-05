@@ -1,9 +1,10 @@
 ---
-title: "Hello World"
-date: "2023-10-27"
-slug: "hello-world"
-template: "post.j2"
+title: Hello World
+date: 2023-10-27
+slug: hello-world
+template: post.j2
 draft: false
+tags: 
 ---
 
 # This is the title in Markdown

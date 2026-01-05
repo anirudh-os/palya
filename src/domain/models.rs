@@ -94,11 +94,14 @@ impl Post {
 }
 
 impl Config {
-    pub fn load(input_dir: &Path, config_path: Option<&PathBuf>) -> Result<Config> {
+    pub fn load(input_dir: Option<PathBuf>, config_path: Option<&PathBuf>) -> Result<Config> {
         let path_to_read = match config_path {
             Some(p) => p.clone(),
             None => {
-                let default = input_dir.join("palya.toml");
+                let default = match input_dir {
+                    Some(p) => p.join("palya.toml"),
+                    None => PathBuf::from(".").join("palya.toml"),
+                };
                 if !default.exists() {
                     return Ok(Config {
                         title: "My Blog".to_string(),

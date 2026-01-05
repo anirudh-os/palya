@@ -5,13 +5,13 @@ use std::path::PathBuf;
 #[command(version, about, long_about = None)]
 pub struct Args {
     #[arg(short, long)]
-    pub input: PathBuf,
+    pub input: Option<PathBuf>,
 
     #[arg(short, long)]
-    pub output: PathBuf,
+    pub output: Option<PathBuf>,
 
     #[arg(short, long)]
-    pub templates: PathBuf,
+    pub templates: Option<PathBuf>,
 
     #[arg(long)]
     pub static_dir: Option<PathBuf>,
@@ -19,6 +19,6 @@ pub struct Args {
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(long)]
     pub drafts: bool,
 }
