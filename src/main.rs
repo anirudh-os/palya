@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use palya::{cmd::Args, Site};
+use palya::{Site, cmd::Args};
 
 fn main() -> Result<()> {
     let args = Args::parse();

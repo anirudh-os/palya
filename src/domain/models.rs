@@ -13,6 +13,9 @@ pub struct FrontMatter {
     pub date: Option<String>,
     pub slug: Option<String>,
     pub template: Option<String>,
+
+    #[serde(default)]
+    pub draft: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -30,19 +33,19 @@ pub struct Config {
 }
 
 impl Post {
-    pub fn from_file(input_path: PathBuf) -> Result<Post> {
+    pub fn from_file(input_path: PathBuf, drafts: &bool) -> Result<Option<Post>> {
         let content = fs::read_to_string(&input_path)
             .with_context(|| format!("Couldn't read contents of {}", input_path.display()))?;
-        Self::parse(content, input_path)
+        Self::parse(content, input_path, drafts)
     }
 
-    pub fn parse(content: String, input_path: PathBuf) -> Result<Post> {
+    pub fn parse(content: String, input_path: PathBuf, drafts: &bool) -> Result<Option<Post>> {
         let (frontmatter, content) = if let Some(rest) = content.strip_prefix("---") {
             if let Some((fm, content)) = rest.split_once("---") {
-                let fm = Some(
-                    from_str::<FrontMatter>(fm)
-                        .with_context(|| format!("Failed to parse frontmatter: {:?}", input_path))?
-                );
+                let fm =
+                    Some(from_str::<FrontMatter>(fm).with_context(|| {
+                        format!("Failed to parse frontmatter: {:?}", input_path)
+                    })?);
                 (fm, content)
             } else {
                 (None, content.as_str())
@@ -50,6 +53,12 @@ impl Post {
         } else {
             (None, content.as_str())
         };
+
+        if let Some(fm) = &frontmatter {
+            if fm.draft && !*drafts {
+                return Ok(None);
+            }
+        }
 
         let parser = Parser::new(content);
         let mut html_output = String::new();
@@ -64,11 +73,16 @@ impl Post {
 
         let url = format!("/{}/", slug);
 
-        Ok(Post { frontmatter, content: html_output, url })
+        Ok(Some(Post {
+            frontmatter,
+            content: html_output,
+            url,
+        }))
     }
 
     pub fn template_name(&self) -> &str {
-        self.frontmatter.as_ref()
+        self.frontmatter
+            .as_ref()
             .and_then(|fm| fm.template.as_deref())
             .unwrap_or("post.j2")
     }

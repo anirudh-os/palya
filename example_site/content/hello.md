@@ -3,6 +3,7 @@ title: "Hello World"
 date: "2023-10-27"
 slug: "hello-world"
 template: "post.j2"
+draft: false
 ---
 
 # This is the title in Markdown

@@ -6,7 +6,7 @@ use minijinja::{Environment, Value, context};
 use rayon::prelude::*;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use walkdir::WalkDir;
 
 pub struct Site {
@@ -40,12 +40,13 @@ impl Site {
 
         let mut posts: Vec<Post> = paths
             .par_iter()
-            .map(|p| Post::from_file(p.clone()))
-            .filter_map(|r| {
-                if let Err(e) = &r {
+            .filter_map(|p| match Post::from_file(p.clone(), &self.args.drafts) {
+                Err(e) => {
                     eprintln!("Warning: Skipping post due to error: {}", e);
+                    None
                 }
-                r.ok()
+                Result::Ok(Some(post)) => Some(post),
+                Result::Ok(None) => None,
             })
             .collect();
 
