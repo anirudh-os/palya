@@ -27,23 +27,17 @@ pub fn copy_static_files(
     for entry in WalkDir::new(&static_dir) {
         let entry = entry?;
         let path = entry.path();
+        let target = dest.join("static");
+        fs::create_dir_all(&target).context("Failed to create static dir")?;
         if path.is_file() {
-            let relative = path.strip_prefix(&static_dir)?;
-            let target = dest.join(relative);
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent).context("Failed to create static dir")?;
-            }
-            fs::copy(path, &target)?;
+            let target_file = target.join(path.strip_prefix(path.parent().unwrap_or(Path::new("./")))?);
+            fs::copy(path, &target_file).with_context(|| format!("Couldn't copy the file {:#?}", &path))?;
         }
     }
     Ok(())
 }
 
-pub fn load_templates(
-    env: &mut Environment,
-    input_dir: &Path,
-    templates_dir: &Path,
-) -> Result<()> {
+pub fn load_templates(env: &mut Environment, input_dir: &Path, templates_dir: &Path) -> Result<()> {
     let template_dir = if templates_dir.exists() {
         PathBuf::from(templates_dir)
     } else {

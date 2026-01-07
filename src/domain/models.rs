@@ -113,7 +113,7 @@ impl Config {
                     return Ok(Config {
                         title: "My Blog".to_string(),
                         description: None,
-                        base_url: None,
+                        base_url: Some("".to_string()),
                     });
                 }
                 default
@@ -123,8 +123,14 @@ impl Config {
         let config_str = read_to_string(&path_to_read)
             .with_context(|| format!("Found config at {:?} but couldn't read it", path_to_read))?;
 
-        toml::from_str::<Config>(&config_str)
-            .with_context(|| format!("Failed to parse TOML in {:?}", path_to_read))
+        let mut config = toml::from_str::<Config>(&config_str)
+            .with_context(|| format!("Failed to parse TOML in {:?}", path_to_read))?;
+
+        if config.base_url == None {
+            config.base_url = Some("".to_string());
+        }
+
+        Ok(config)
     }
 }
 

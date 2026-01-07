@@ -1,3 +1,3 @@
 title = "My Rust Blog"
 description = "My blog for rust!"
-base_url = "https://example.com"
+# base_url = "https://example.com"
