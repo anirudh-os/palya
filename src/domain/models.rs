@@ -7,15 +7,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum Tags {
+    Single(String),
+    Multiple(Vec<String>),
+    Null,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FrontMatter {
     pub title: Option<String>,
     pub date: Option<String>,
     pub slug: Option<String>,
     pub template: Option<String>,
-
-    #[serde(default)]
     pub draft: bool,
+    pub tags: Option<Tags>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,7 +101,7 @@ impl Post {
 }
 
 impl Config {
-    pub fn load(input_dir: Option<PathBuf>, config_path: Option<&PathBuf>) -> Result<Config> {
+    pub fn load(input_dir: Option<&PathBuf>, config_path: Option<&PathBuf>) -> Result<Config> {
         let path_to_read = match config_path {
             Some(p) => p.clone(),
             None => {
@@ -118,5 +125,18 @@ impl Config {
 
         toml::from_str::<Config>(&config_str)
             .with_context(|| format!("Failed to parse TOML in {:?}", path_to_read))
+    }
+}
+
+impl FrontMatter {
+    pub fn get_tags(&self) -> Option<Vec<String>> {
+        match &self.tags {
+            Some(Tags::Single(tag)) => Some(vec![tag.clone()]),
+            Some(Tags::Multiple(tags)) => Some(tags.clone()),
+            Some(Tags::Null) | None => {
+                println!("couldn't find the tags in the frontmatter of {:?}!", self.title);
+                None
+            },
+        }
     }
 }

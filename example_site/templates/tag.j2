@@ -1,12 +1,13 @@
 {% extends "base.j2" %}
 
 {% block title %}
-{{ site.title }}
+Posts tagged "{{ tag }}" · {{ site.title }}
 {% endblock %}
 
 {% block content %}
-<h2>Latest Posts</h2>
+<h2>Posts tagged "{{ tag }}"</h2>
 
+{% if posts | length > 0 %}
 <ul>
 {% for post in posts %}
     <li>
@@ -15,4 +16,7 @@
     </li>
 {% endfor %}
 </ul>
+{% else %}
+<p>No posts found for this tag.</p>
+{% endif %}
 {% endblock %}

@@ -4,6 +4,7 @@ use crate::io::fs::{copy_static_files, load_templates};
 use anyhow::{Context, Ok, Result};
 use minijinja::{Environment, Value, context};
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
@@ -22,7 +23,7 @@ impl Site {
     pub fn new(args: Args) -> Result<Self> {
         let mut env = Environment::new();
 
-        let config = Config::load(args.input.clone(), args.config.as_ref())?;
+        let config = Config::load(args.input.as_ref(), args.config.as_ref())?;
         env.add_global("site", Value::from_serialize(&config));
 
         let input_dir = match args.input {
@@ -69,7 +70,7 @@ impl Site {
             .filter_map(
                 |p| match Post::from_file(p.clone(), &self.consider_drafts) {
                     Err(e) => {
-                        eprintln!("Warning: Skipping post due to error: {}", e);
+                        eprintln!("Warning: Skipping post {:#?} due to error: {}", p, e);
                         None
                     }
                     Result::Ok(Some(post)) => Some(post),
@@ -79,11 +80,34 @@ impl Site {
             .collect();
 
         posts.sort_by(|a, b| {
-            let da = a.frontmatter.as_ref().and_then(|f| f.date.as_deref());
-            let db = b.frontmatter.as_ref().and_then(|f| f.date.as_deref());
-            db.cmp(&da)
+            let date_a = a.frontmatter.as_ref().and_then(|f| f.date.as_deref());
+            let date_b = b.frontmatter.as_ref().and_then(|f| f.date.as_deref());
+            date_b.cmp(&date_a)
         });
 
+        self.render_posts(&posts)?;
+
+        self.render_index(&posts)?;
+
+        self.render_tags(&posts)?;
+
+        Ok(())
+    }
+
+    fn render_index(&self, posts: &[Post]) -> Result<()> {
+        let ctx = context! { posts => posts };
+        match self.env.get_template("index.j2") {
+            Result::Ok(tmpl) => {
+                let out = tmpl.render(ctx)?;
+                let mut f = File::create(self.output_dir.join("index.html"))?;
+                f.write_all(out.as_bytes())?;
+            }
+            Err(_) => eprintln!("Skipping index.html (index.j2 not found)"),
+        }
+        Ok(())
+    }
+
+    fn render_posts(&self, posts: &[Post]) -> Result<()> {
         posts.par_iter().try_for_each(|post| -> Result<()> {
             let tmpl_name = post.template_name();
             let ctx = context! { post => post };
@@ -102,22 +126,43 @@ impl Site {
             f.write_all(rendered.as_bytes())?;
             Ok(())
         })?;
-
-        self.render_index(&posts)?;
-
         Ok(())
     }
 
-    fn render_index(&self, posts: &[Post]) -> Result<()> {
-        let ctx = context! { posts => posts };
-        match self.env.get_template("index.j2") {
-            std::result::Result::Ok(tmpl) => {
-                let out = tmpl.render(ctx)?;
-                let mut f = File::create(self.output_dir.join("index.html"))?;
-                f.write_all(out.as_bytes())?;
+    fn render_tags(&self, posts: &[Post]) -> Result<()> {
+        let mut tag_map: HashMap<String, Vec<&Post>> = HashMap::new();
+        fs::create_dir_all(&self.output_dir.join("tags"))
+            .context("Could not create tag directory")?;
+
+        for post in posts {
+            let Some(fm) = post.frontmatter.as_ref() else {
+                continue;
+            };
+            let Some(tags) = fm.get_tags() else { continue };
+
+            for tag in tags {
+                tag_map.entry(tag.clone()).or_default().push(post);
             }
-            Err(_) => eprintln!("Skipping index.html (index.j2 not found)"),
         }
+
+        for (tag, post_list) in tag_map {
+            let ctx = context! {
+                tag => tag.clone(),
+                posts => post_list,
+            };
+            match self.env.get_template("tag.j2") {
+                Result::Ok(tmpl) => {
+                    let out = tmpl.render(ctx)?;
+                    let mut f = File::create(self.output_dir.join("tags").join(format!("{}.html", tag)))?;
+                    f.write_all(out.as_bytes())?;
+                }
+                Err(_) => {
+                    eprintln!("Couldn't render the tag pages as tag.j2 is not found!");
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 }

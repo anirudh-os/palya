@@ -4,6 +4,7 @@ date: 2025-12-31
 slug: welcome
 template: post.j2
 draft: false
+tags: example
 ---
 
 # Welcome
