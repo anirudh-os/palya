@@ -9,6 +9,16 @@
     <h2>{{ post.frontmatter.title }}</h2>
     <p class="date">Published on {{ post.frontmatter.date }}</p>
 
+    {% if post.frontmatter.tags %}
+    <ul class="tags">
+        {% for tag in post.tags %}
+        <li>
+            <a href="/tags/{{ tag }}.html">{{ tag }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
     {{ post.content | safe }}
 </article>
 {% endblock %}

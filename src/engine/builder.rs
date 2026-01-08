@@ -108,6 +108,7 @@ impl Site {
     }
 
     fn render_posts(&self, posts: &[Post]) -> Result<()> {
+        fs::create_dir_all(self.output_dir.join("posts"))?;
         posts.par_iter().try_for_each(|post| -> Result<()> {
             let tmpl_name = post.template_name();
             let ctx = context! { post => post };
@@ -118,8 +119,9 @@ impl Site {
                 .render(ctx)?;
 
             let out_path = post.output_path(&self.output_dir);
-            if let Some(p) = out_path.parent() {
-                fs::create_dir_all(p)?;
+
+            if let Some(parent) = out_path.parent() {
+                fs::create_dir_all(parent)?;
             }
 
             let mut f = File::create(out_path)?;
@@ -153,7 +155,13 @@ impl Site {
             match self.env.get_template("tag.j2") {
                 Result::Ok(tmpl) => {
                     let out = tmpl.render(ctx)?;
-                    let mut f = File::create(self.output_dir.join("tags").join(format!("{}.html", tag)))?;
+                    let tag_slug = tag.replace(' ', "-").to_lowercase();
+                    let path = self
+                        .output_dir
+                        .join("tags")
+                        .join(format!("{}.html", tag_slug));
+                    let mut f =
+                        File::create(path)?;
                     f.write_all(out.as_bytes())?;
                 }
                 Err(_) => {

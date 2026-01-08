@@ -30,6 +30,7 @@ pub struct Post {
     pub frontmatter: Option<FrontMatter>,
     pub content: String,
     pub url: String,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,10 +62,13 @@ impl Post {
             (None, content.as_str())
         };
 
+        let mut tags: Option<Vec<String>> = None;
+
         if let Some(fm) = &frontmatter {
             if fm.draft && !*drafts {
                 return Ok(None);
             }
+            tags = fm.get_tags();
         }
 
         let parser = Parser::new(content);
@@ -78,12 +82,13 @@ impl Post {
             .unwrap_or("post1")
             .to_string();
 
-        let url = format!("/{}/", slug);
+        let url = format!("/posts/{}/", slug);
 
         Ok(Some(Post {
             frontmatter,
             content: html_output,
             url,
+            tags,
         }))
     }
 
@@ -140,9 +145,12 @@ impl FrontMatter {
             Some(Tags::Single(tag)) => Some(vec![tag.clone()]),
             Some(Tags::Multiple(tags)) => Some(tags.clone()),
             Some(Tags::Null) | None => {
-                println!("couldn't find the tags in the frontmatter of {:?}!", self.title);
+                println!(
+                    "couldn't find the tags in the frontmatter of {:?}!",
+                    self.title
+                );
                 None
-            },
+            }
         }
     }
 }
