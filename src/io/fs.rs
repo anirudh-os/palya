@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
+use blake3::hash;
 use minijinja::Environment;
 use std::{
-    fs,
-    path::{Path, PathBuf},
+    collections::HashMap, fs, path::{Path, PathBuf}
 };
 use walkdir::WalkDir;
 
@@ -30,27 +30,24 @@ pub fn copy_static_files(
         let target = dest.join("static");
         fs::create_dir_all(&target).context("Failed to create static dir")?;
         if path.is_file() {
-            let target_file = target.join(path.strip_prefix(path.parent().unwrap_or(Path::new("./")))?);
-            fs::copy(path, &target_file).with_context(|| format!("Couldn't copy the file {:#?}", &path))?;
+            let target_file =
+                target.join(path.strip_prefix(path.parent().unwrap_or(Path::new("./")))?);
+            fs::copy(path, &target_file)
+                .with_context(|| format!("Couldn't copy the file {:#?}", &path))?;
         }
     }
     Ok(())
 }
 
-pub fn load_templates(env: &mut Environment, input_dir: &Path, templates_dir: &Path) -> Result<()> {
-    let template_dir = if templates_dir.exists() {
-        PathBuf::from(templates_dir)
-    } else {
-        input_dir.join("templates")
-    };
-
-    for entry in WalkDir::new(&template_dir) {
+pub fn load_templates(env: &mut Environment, templates_dir: &Path) -> Result<HashMap<PathBuf, [u8; 32]>> {
+    let mut template_hash = HashMap::new();
+    for entry in WalkDir::new(templates_dir) {
         let entry = entry?;
         let path = entry.path();
 
         if path.is_file() {
             let name = path
-                .strip_prefix(&template_dir)
+                .strip_prefix(templates_dir)
                 .with_context(|| {
                     format!(
                         "Couldn't strip the prefix of {}!",
@@ -61,10 +58,13 @@ pub fn load_templates(env: &mut Environment, input_dir: &Path, templates_dir: &P
                 .into_owned();
 
             let content = fs::read_to_string(path)?;
+            let content_hash = *hash(content.as_bytes()).as_bytes();
+
+            template_hash.insert(PathBuf::from(path), content_hash);
 
             env.add_template_owned(name.clone(), content)
                 .with_context(|| format!("Couldn't add the template {}", name))?;
         }
     }
-    Ok(())
+    Ok(template_hash)
 }

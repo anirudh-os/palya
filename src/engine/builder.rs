@@ -1,12 +1,12 @@
 use crate::cmd::Args;
-use crate::domain::models::{Config, Post};
+use crate::domain::models::{BuildCache, Config, GlobalHash, Post};
 use crate::io::fs::{copy_static_files, load_templates};
 use anyhow::{Context, Ok, Result};
 use minijinja::{Environment, Value, context};
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
@@ -14,18 +14,16 @@ pub struct Site {
     env: Environment<'static>,
     input_dir: PathBuf,
     output_dir: PathBuf,
-    // templates_dir: PathBuf,
     static_dir: Option<PathBuf>,
     consider_drafts: bool,
+    cache: Option<BuildCache>,
+    fresh_build: bool,
+    config_hash: [u8; 32],
+    template_hash: HashMap<PathBuf, [u8; 32]>,
 }
 
 impl Site {
     pub fn new(args: Args) -> Result<Self> {
-        let mut env = Environment::new();
-
-        let config = Config::load(args.input.as_ref(), args.config.as_ref())?;
-        env.add_global("site", Value::from_serialize(&config));
-
         let input_dir = match args.input {
             Some(path) => path,
             None => PathBuf::from("."),
@@ -41,7 +39,32 @@ impl Site {
             None => PathBuf::from(&input_dir).join("templates"),
         };
 
-        load_templates(&mut env, &input_dir, &templates_dir)?;
+        let mut env = Environment::new();
+
+        let cache = match BuildCache::new(&output_dir) {
+            Result::Ok(c) => Some(c),
+            Result::Err(_) => None,
+        };
+
+        let (config, config_hash) = Config::load(&input_dir, args.config.as_ref())?;
+        env.add_global("site", Value::from_serialize(&config));
+
+        let template_hash = load_templates(&mut env, &templates_dir)?;
+
+        let mut fresh_build = false;
+
+        match &cache {
+            Some(cache) => {
+                if cache.global_hash.config_hash != config_hash {
+                    fresh_build = true;
+                } else {
+                    if cache.global_hash.templates_hash != template_hash {
+                        fresh_build = true;
+                    }
+                }
+            }
+            None => fresh_build = true,
+        }
 
         Ok(Site {
             env,
@@ -49,6 +72,10 @@ impl Site {
             output_dir,
             static_dir: args.static_dir.clone(),
             consider_drafts: args.drafts,
+            cache,
+            fresh_build,
+            config_hash,
+            template_hash,
         })
     }
 
@@ -65,18 +92,27 @@ impl Site {
             .filter(|p| p.extension().map_or(false, |e| e == "md"))
             .collect();
 
-        let mut posts: Vec<Post> = paths
+        let content_files: Vec<(PathBuf, Post, [u8; 32])> = paths
             .par_iter()
             .filter_map(
                 |p| match Post::from_file(p.clone(), &self.consider_drafts) {
-                    Err(e) => {
+                    Result::Ok((Some(post), hash)) => Some((p.clone(), post, hash)),
+                    Result::Ok((None, _)) => None,
+                    Result::Err(e) => {
                         eprintln!("Warning: Skipping post {:#?} due to error: {}", p, e);
                         None
                     }
-                    Result::Ok(Some(post)) => Some(post),
-                    Result::Ok(None) => None,
                 },
             )
+            .collect();
+
+        let mut post_cache = HashMap::new();
+        let mut posts: Vec<Post> = content_files
+            .into_iter()
+            .map(|(path, post, hash)| {
+                post_cache.insert(path, hash);
+                post
+            })
             .collect();
 
         posts.sort_by(|a, b| {
@@ -85,11 +121,21 @@ impl Site {
             date_b.cmp(&date_a)
         });
 
-        self.render_posts(&posts)?;
+        self.render_posts(&posts, &post_cache)?;
 
         self.render_index(&posts)?;
 
         self.render_tags(&posts)?;
+
+        let new_cache = BuildCache {
+            file_cache: post_cache,
+            global_hash: GlobalHash {
+                config_hash: self.config_hash,
+                templates_hash: self.template_hash,
+            },
+        };
+
+        new_cache.save(&self.output_dir)?;
 
         Ok(())
     }
@@ -107,27 +153,52 @@ impl Site {
         Ok(())
     }
 
-    fn render_posts(&self, posts: &[Post]) -> Result<()> {
+    fn render_posts(&self, posts: &[Post], post_cache: &HashMap<PathBuf, [u8; 32]>) -> Result<()> {
         fs::create_dir_all(self.output_dir.join("posts"))?;
-        posts.par_iter().try_for_each(|post| -> Result<()> {
-            let tmpl_name = post.template_name();
-            let ctx = context! { post => post };
-            let rendered = self
-                .env
-                .get_template(tmpl_name)
-                .with_context(|| format!("Template {} not found", tmpl_name))?
-                .render(ctx)?;
+        let mut posts_mod = HashSet::new();
 
-            let out_path = post.output_path(&self.output_dir);
-
-            if let Some(parent) = out_path.parent() {
-                fs::create_dir_all(parent)?;
+        match &self.cache {
+            Some(cache) => {
+                for (path, hash) in post_cache {
+                    if cache.file_cache.get(path).unwrap_or(&[0; 32]) != hash {
+                        posts_mod.insert(path.clone());
+                    }
+                }
             }
+            None => {}
+        }
 
-            let mut f = File::create(out_path)?;
-            f.write_all(rendered.as_bytes())?;
-            Ok(())
-        })?;
+        posts
+            .par_iter()
+            .try_for_each(|post| -> Result<()> {
+                if !posts_mod.contains(&post.source) && !self.fresh_build && !self.consider_drafts {
+                    ()
+                }
+                let tmpl_name = post.template_name();
+                let ctx = context! { post => post };
+                let tmpl = match self.env.get_template(tmpl_name) {
+                    Result::Ok(t) => t,
+                    Result::Err(e) => {
+                        eprintln!(
+                            "Template {} not found for post {:?}: {}",
+                            tmpl_name, post.source, e
+                        );
+                        return Ok(());
+                    }
+                };
+
+                let rendered = tmpl.render(ctx)?;
+                let out_path = post.output_path(&self.output_dir);
+
+                if let Some(parent) = out_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+
+                let file = File::create(out_path)?;
+                let mut writer = BufWriter::new(file);
+                writer.write_all(rendered.as_bytes())?;
+                Ok(())
+            })?;
         Ok(())
     }
 
@@ -160,8 +231,7 @@ impl Site {
                         .output_dir
                         .join("tags")
                         .join(format!("{}.html", tag_slug));
-                    let mut f =
-                        File::create(path)?;
+                    let mut f = File::create(path)?;
                     f.write_all(out.as_bytes())?;
                 }
                 Err(_) => {
