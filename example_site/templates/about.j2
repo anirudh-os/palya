@@ -1,0 +1,17 @@
+{% extends "base.j2" %}
+
+{% block title %}
+{{ page.frontmatter.title }} · {{ site.title }}
+{% endblock %}
+
+{% block content %}
+<article class="about">
+    <h2>{{ page.frontmatter.title }}</h2>
+
+    {% if page.frontmatter.subtitle %}
+    <p class="subtitle">{{ page.frontmatter.subtitle }}</p>
+    {% endif %}
+
+    {{ page.content | safe }}
+</article>
+{% endblock %}

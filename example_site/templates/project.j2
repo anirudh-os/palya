@@ -1,0 +1,43 @@
+{% extends "base.j2" %}
+
+{% block title %}
+{{ project.frontmatter.title }} · {{ site.title }}
+{% endblock %}
+
+{% block content %}
+<article class="project">
+    <h2>{{ project.frontmatter.title }}</h2>
+
+    {% if project.frontmatter.tags %}
+    <ul class="tags">
+        {% for tag in project.tags %}
+        <li>
+            <a href="/tags/{{ tag }}.html">{{ tag }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if project.frontmatter.description %}
+    <p class="description">{{ project.frontmatter.description }}</p>
+    {% endif %}
+
+    {% if project.frontmatter.stack %}
+    <ul class="stack">
+        {% for tech in project.frontmatter.stack %}
+        <li>{{ tech }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if project.frontmatter.links %}
+    <ul class="links">
+        {% for label, url in project.frontmatter.links.items() %}
+        <li><a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {{ project.content | safe }}
+</article>
+{% endblock %}

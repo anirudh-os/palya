@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// ... Tags struct (Unchanged) ...
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Tags {
@@ -18,9 +19,14 @@ pub enum Tags {
     Null,
 }
 
+// ... FrontMatter struct (Unchanged) ...
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FrontMatter {
     pub title: Option<String>,
+    pub description: Option<String>,            // Added for projects
+    pub subtitle: Option<String>,               // Added for pages
+    pub stack: Option<Vec<String>>,             // Added for projects
+    pub links: Option<HashMap<String, String>>, // Added for projects
     pub date: Option<String>,
     pub slug: Option<String>,
     pub template: Option<String>,
@@ -31,14 +37,16 @@ pub struct FrontMatter {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Post {
+pub struct ContentItem {
     pub frontmatter: Option<FrontMatter>,
     pub content: String,
     pub url: String,
     pub tags: Option<Vec<String>>,
     pub source: PathBuf,
+    pub collection: String,
 }
 
+// ... Config, GlobalHash, BuildCache structs (Unchanged) ...
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub title: String,
@@ -58,28 +66,48 @@ pub struct BuildCache {
     pub global_hash: GlobalHash,
 }
 
-impl Post {
-    pub fn from_file(input_path: PathBuf, drafts: &bool) -> Result<(Option<Post>, [u8; 32])> {
+impl ContentItem {
+    pub fn from_file(
+        base_path: &Path,
+        input_path: PathBuf,
+        drafts: &bool,
+    ) -> Result<(Option<ContentItem>, [u8; 32])> {
         let content = fs::read_to_string(&input_path)
             .with_context(|| format!("Couldn't read contents of {}", input_path.display()))?;
         let content_hash = *hash(content.as_bytes()).as_bytes();
-        let post = Self::parse(content, input_path, drafts)?;
+        // Pass base_path (content dir) to help calculate collection
+        let post = Self::parse(content, base_path, input_path, drafts)?;
         Ok((post, content_hash))
     }
 
-    pub fn parse(content: String, input_path: PathBuf, drafts: &bool) -> Result<Option<Post>> {
+    pub fn parse(
+        content: String,
+        base_path: &Path,
+        input_path: PathBuf,
+        drafts: &bool,
+    ) -> Result<Option<ContentItem>> {
         let (frontmatter, content) = if let Some(rest) = content.strip_prefix("---") {
             if let Some((fm, content)) = rest.split_once("---") {
-                let fm =
-                    Some(from_str::<FrontMatter>(fm).with_context(|| {
-                        format!("Failed to parse frontmatter: {:?}", input_path)
-                    })?);
+                let fm = Some(from_str::<FrontMatter>(fm).with_context(|| {
+                    format!("Failed to parse frontmatter: {:?}", input_path.clone())
+                })?);
                 (fm, content)
             } else {
                 (None, content.as_str())
             }
         } else {
             (None, content.as_str())
+        };
+
+        // Get path relative to "content/" folder
+        let relative_path = input_path.strip_prefix(base_path).unwrap_or(&input_path);
+
+        // The first component is the collection 
+        // If it's in the root, parent is empty and the collection is "pages"
+        let collection = match relative_path.parent() {
+            Some(parent) if parent.as_os_str().is_empty() => "pages".to_string(),
+            Some(parent) => parent.to_string_lossy().to_string(),
+            None => "pages".to_string(),
         };
 
         let mut tags: Option<Vec<String>> = None;
@@ -102,22 +130,40 @@ impl Post {
             .unwrap_or("post1")
             .to_string();
 
-        let url = format!("/posts/{}/", slug);
+        // URL Logic:
+        // pages -> /about/
+        // blog -> /blog/hello-world/
+        // projects -> /projects/palya/
+        let url = if collection == "pages" {
+            format!("/{}/", slug)
+        } else {
+            format!("/{}/{}/", collection, slug)
+        };
 
-        Ok(Some(Post {
+        Ok(Some(ContentItem {
             frontmatter,
             content: html_output,
             url,
             tags,
             source: input_path,
+            collection,
         }))
     }
 
-    pub fn template_name(&self) -> &str {
-        self.frontmatter
-            .as_ref()
-            .and_then(|fm| fm.template.as_deref())
-            .unwrap_or("post.j2")
+    pub fn template_name(&self) -> String {
+        // Allow frontmatter override, otherwise defaults based on collection
+        if let Some(fm) = &self.frontmatter {
+            if let Some(t) = &fm.template {
+                return t.clone();
+            }
+        }
+
+        match self.collection.as_str() {
+            "blog" => "post.j2".to_string(),
+            "projects" => "project.j2".to_string(),
+            "pages" => "page.j2".to_string(), // or about.j2 depending on logic
+            _ => "post.j2".to_string(),
+        }
     }
 
     pub fn output_path(&self, output_dir: &Path) -> PathBuf {
@@ -126,6 +172,8 @@ impl Post {
     }
 }
 
+// Implementations for Config, FrontMatter, BuildCache (same as before, ensure Save is there)
+// ... (Keep existing impls) ...
 impl Config {
     pub fn load(input_dir: &Path, config_path: Option<&PathBuf>) -> Result<(Config, [u8; 32])> {
         let path_to_read = match config_path {
@@ -135,7 +183,7 @@ impl Config {
                 if !default.exists() {
                     return Ok((
                         Config {
-                            title: "My Blog".to_string(),
+                            title: "My Site".to_string(),
                             description: None,
                             base_url: Some("".to_string()),
                         },
@@ -154,7 +202,7 @@ impl Config {
         let mut config = toml::from_str::<Config>(&config_str)
             .with_context(|| format!("Failed to parse TOML in {:?}", path_to_read))?;
 
-        if config.base_url == None {
+        if config.base_url.is_none() {
             config.base_url = Some("".to_string());
         }
 
@@ -167,13 +215,7 @@ impl FrontMatter {
         match &self.tags {
             Some(Tags::Single(tag)) => Some(vec![tag.clone()]),
             Some(Tags::Multiple(tags)) => Some(tags.clone()),
-            Some(Tags::Null) | None => {
-                println!(
-                    "Couldn't find the tags in the frontmatter of {:?}!",
-                    self.title
-                );
-                None
-            }
+            Some(Tags::Null) | None => None,
         }
     }
 }
@@ -181,11 +223,8 @@ impl FrontMatter {
 impl BuildCache {
     pub fn new(output_dir: &Path) -> Result<Self> {
         let cache_path = output_dir.join(".palya_cache.json");
-
         let cache_str = read_to_string(&cache_path)?;
-        let cache = serde_json::from_str::<BuildCache>(&cache_str)
-            .with_context(|| format!("Failed to parse JSON in {:?}", cache_path))?;
-
+        let cache = serde_json::from_str::<BuildCache>(&cache_str)?;
         Ok(cache)
     }
 
