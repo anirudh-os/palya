@@ -5,10 +5,30 @@
     <title>{% block title %}{{ site.title }}{% endblock %}</title>
     <meta name="description" content="{{ site.description }}">
     <link rel="stylesheet" href="{{ site.base_url }}/static/style.css">
+    
+    <script src="/static/minisearch.js"></script>
+    <script src="/static/search.js" defer></script>
 </head>
+
 <body>
     <header>
-        <h1><a href="{{ site.base_url }}/">{{ site.title }}</a></h1>
+        <div class="header-inner">
+            <h1><a href="{{ site.base_url }}/">{{ site.title }}</a></h1>
+            
+            <button id="search-toggle" aria-label="Toggle Search">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div id="search-wrapper" class="hidden">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search posts & projects... (Press ESC to close)">
+                <div id="search-results"></div>
+            </div>
+        </div>
     </header>
 
     <main>

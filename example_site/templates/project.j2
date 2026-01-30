@@ -32,8 +32,10 @@
 
     {% if project.frontmatter.links %}
     <ul class="links">
-        {% for label, url in project.frontmatter.links.items() %}
-        <li><a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a></li>
+        {% for label in project.frontmatter.links %}
+        <li>
+            <a href="{{ project.frontmatter.links[label] }}" target="_blank" rel="noopener">{{ label }}</a>
+        </li>
         {% endfor %}
     </ul>
     {% endif %}
