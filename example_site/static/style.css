@@ -1,21 +1,18 @@
 /* --- Variables --- */
 :root {
-    /* Rust Brand Colors */
     --rust-orange: #d74700;
     --rust-orange-hover: #b53c00;
-    --charcoal: #2b2520;           /* Darker, warmer grey */
+    --charcoal: #2b2520;
     --charcoal-light: #3b3632;
-    --paper: #f9f8f6;              /* Warm off-white background */
-    --surface: #ffffff;            /* Pure white for cards */
-    --border: #e6e3df;             /* Subtle borders */
-    --code-bg: #2b2520;            /* Dark background for code blocks */
+    --paper: #f9f8f6;
+    --surface: #ffffff;
+    --border: #e6e3df;
+    --code-bg: #2b2520;
 
-    /* Spacing & UI */
     --radius: 8px;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08);
-    
-    /* Typography */
+
     --font-heading: 'Merriweather', serif; 
     --font-body: 'Fira Sans', -apple-system, sans-serif;
     --font-code: 'Fira Code', monospace;
@@ -30,29 +27,38 @@
 body {
     font-family: var(--font-body);
     line-height: 1.75;
+    font-size: 18px;
     color: var(--charcoal);
     background: var(--paper);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    font-size: 18px; 
 }
 
 /* --- Header --- */
 header {
     background: var(--charcoal);
     border-bottom: 4px solid var(--rust-orange);
-    padding: 1rem 0;
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: var(--shadow-md);
 }
 
-header h1 {
+.header-inner {
     max-width: 900px;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--charcoal);
+    position: relative;
+    z-index: 102;
+}
+
+header h1 {
+    margin: 0;
     font-size: 1.2rem;
     font-family: var(--font-code);
     text-transform: uppercase;
@@ -70,7 +76,120 @@ header h1 a:hover {
     color: var(--rust-orange);
 }
 
-/* --- Main Layout --- */
+/* --- Search Toggle --- */
+#search-toggle {
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+#search-toggle:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--rust-orange);
+}
+
+/* --- Search Wrapper --- */
+#search-wrapper {
+    background: var(--charcoal-light);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    z-index: 101;
+    box-shadow: var(--shadow-md);
+}
+
+#search-wrapper.hidden {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* --- Search Input --- */
+.search-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+}
+
+#search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    background: var(--surface);
+    color: var(--charcoal);
+}
+
+#search-input:focus {
+    outline: none;
+    border-color: var(--rust-orange);
+}
+
+/* --- Search Results --- */
+#search-results {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+}
+
+#search-results:empty {
+    display: none;
+}
+
+.result-item {
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-item:hover {
+    background: #fff5f0;
+    padding-left: 0.5rem;
+}
+
+.result-item a {
+    display: block;
+    padding: 1rem 1.25rem;
+    text-decoration: none;
+    color: var(--charcoal);
+}
+
+.result-item h3 {
+    margin: 0 0 0.4rem 0;
+    font-size: 1.1rem;
+    font-family: var(--font-heading);
+    color: var(--rust-orange);
+}
+
+.result-item:hover h3 {
+    color: var(--rust-orange-hover);
+}
+
+.result-item .meta {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+/* --- Layout --- */
 main {
     max-width: 860px;
     margin: 0 auto;
@@ -81,16 +200,14 @@ main {
 
 /* --- Typography --- */
 h1, h2, h3, h4 {
-    color: var(--charcoal);
     font-family: var(--font-heading);
     line-height: 1.2;
     margin-top: 2.5rem;
     margin-bottom: 1rem;
 }
 
-article h1 { 
-    font-size: 2.75rem; 
-    font-weight: 800;
+article h1 {
+    font-size: 2.75rem;
     margin-top: 0;
 }
 
@@ -100,17 +217,15 @@ article h2 {
     padding-bottom: 0.5rem;
 }
 
-article p, .intro p {
-    font-size: 1.125rem; 
+article p {
+    font-size: 1.125rem;
     margin-bottom: 1.5rem;
     color: #4a4540;
 }
 
-/* --- The Posts List (FIXED: Clean Rows) --- */
-/* This targets the list in the "Latest Posts" section specifically */
+/* --- Post List --- */
 main > ul {
     list-style: none;
-    padding: 0;
     margin-top: 1rem;
     border-top: 1px solid var(--border);
 }
@@ -118,14 +233,13 @@ main > ul {
 main > ul > li {
     padding: 1rem 0.5rem;
     border-bottom: 1px solid var(--border);
-    transition: background-color 0.2s;
-    font-family: var(--font-body);
-    font-size: 1.05rem;
+    color: #666;
+    transition: all 0.2s;
 }
 
 main > ul > li:hover {
-    background-color: white; /* Highlights the row */
-    padding-left: 1rem;      /* Slight nudge animation */
+    background: white;
+    padding-left: 1rem;
     border-left: 4px solid var(--rust-orange);
 }
 
@@ -133,21 +247,13 @@ main > ul > li a {
     color: var(--charcoal);
     text-decoration: none;
     font-weight: 600;
-    margin-left: 0.5rem;
-    border-bottom: 1px solid transparent;
 }
 
 main > ul > li:hover a {
     color: var(--rust-orange);
-    border-bottom-color: var(--rust-orange);
 }
 
-/* If your date is just text inside the li, this ensures it looks okay */
-main > ul > li {
-    color: #666; /* Date color */
-}
-
-/* --- The Project Grid --- */
+/* --- Cards --- */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -160,11 +266,8 @@ main > ul > li {
     padding: 1.5rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: var(--shadow-sm);
-    position: relative;
-    top: 0;
-    cursor: pointer; /* Indicates interactivity */
+    transition: all 0.3s;
 }
 
 .card:hover {
@@ -173,71 +276,68 @@ main > ul > li {
     border-color: var(--rust-orange);
 }
 
-.card h3 { 
-    margin-top: 0; 
-    font-size: 1.3rem; 
+.card h3 {
+    margin-top: 0;
+    font-size: 1.3rem;
 }
 
-.card h3 a { 
-    text-decoration: none; 
+.card h3 a {
+    text-decoration: none;
     color: var(--charcoal);
-    
     background-image: linear-gradient(var(--rust-orange), var(--rust-orange));
     background-size: 0% 2px;
     background-repeat: no-repeat;
     background-position: left bottom;
-    transition: background-size 0.3s ease-in-out, color 0.3s;
-    padding-bottom: 2px;
+    transition: background-size 0.3s, color 0.3s;
 }
 
-/* When hovering the CARD, trigger the LINK animation */
 .card:hover h3 a {
-    background-size: 100% 2px; /* Fill underline */
+    background-size: 100% 2px;
     color: var(--rust-orange);
 }
-
-.card p { font-size: 1rem; color: #666; margin-bottom: 0; }
 
 /* --- Tags --- */
 .tags {
     list-style: none;
     display: flex;
-    flex-wrap: wrap;
     gap: 0.5rem;
-    margin: 1.5rem 0 2rem 0;
+    flex-wrap: wrap;
 }
 
 .tags li a {
-    display: inline-block;
     padding: 0.35rem 1rem;
     font-size: 0.85rem;
     font-family: var(--font-code);
     background: #e8e6e3;
-    color: var(--charcoal-light);
     border-radius: 99px;
     text-decoration: none;
-    transition: all 0.2s;
+    color: var(--charcoal-light);
     font-weight: 600;
-    border: 1px solid transparent;
+    transition: all 0.2s;
 }
 
 .tags li a:hover {
     background: var(--rust-orange);
     color: white;
-    transform: translateY(-1px);
 }
 
-/* --- Code Blocks --- */
+/* --- Code --- */
 pre {
-    background: var(--code-bg);
-    color: #f8f8f2;
     padding: 1.5rem;
     border-radius: var(--radius);
     overflow-x: auto;
     margin: 2rem 0;
     font-size: 0.95rem;
     box-shadow: var(--shadow-md);
-    border-left: 4px solid var(--rust-orange);
+    font-family: var(--font-code);
+    line-height: 1.5;
+}
+
+pre code {
+    background: transparent !important;
+    padding: 0;
+    border: none;
+    color: inherit;
 }
 
 :not(pre) > code {
@@ -259,202 +359,4 @@ footer {
     color: #888;
     font-size: 0.9rem;
     font-family: var(--font-code);
-    margin-top: auto;
-}
-
-/* --- Header Layout --- */
-header {
-    background: var(--charcoal);
-    border-bottom: 4px solid var(--rust-orange);
-    /* Remove padding here, we handle it in inner */
-    padding: 0; 
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow-md);
-}
-
-.header-inner {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    z-index: 102; /* Above the search bar */
-    background: var(--charcoal); /* Covers the sliding search bar */
-}
-
-header h1 {
-    margin: 0;
-    padding: 0;
-    font-size: 1.2rem;
-    font-family: var(--font-code);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-}
-
-header h1 a {
-    color: #e0e0e0;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-header h1 a:hover {
-    color: var(--rust-orange);
-}
-
-/* --- Search Toggle Button --- */
-#search-toggle {
-    background: transparent;
-    border: none;
-    color: #e0e0e0;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#search-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--rust-orange);
-}
-
-/* --- Search Popup Wrapper --- */
-#search-wrapper {
-    background: var(--charcoal-light); /* Slightly lighter than header */
-    overflow: hidden;
-    max-height: 500px; /* Arbitrary max-height for animation */
-    transition: max-height 0.3s ease-out, opacity 0.3s ease;
-    border-bottom: 1px solid var(--border);
-    position: absolute;
-    top: 100%; /* Position immediately below header */
-    left: 0;
-    right: 0;
-    z-index: 101;
-    box-shadow: var(--shadow-md);
-}
-
-/* The "Hidden" State */
-#search-wrapper.hidden {
-    max-height: 0;
-    opacity: 0;
-    border-bottom: none;
-    pointer-events: none; /* User can't click hidden elements */
-}
-
-/* --- Search Container & Input --- */
-.search-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem 1.5rem;
-    position: relative;
-}
-
-#search-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: 1.1rem;
-    font-family: var(--font-body);
-    border: 2px solid transparent;
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--charcoal);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-}
-
-#search-input:focus {
-    outline: none;
-    border-color: var(--rust-orange);
-}
-
-/* --- Search Results Dropdown --- */
-#search-results {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-top: 0.5rem;
-    max-height: 400px;
-    overflow-y: auto;
-    box-shadow: var(--shadow-md);
-    /* Ensure it sits above everything */
-    position: relative; 
-    z-index: 1000; 
-}
-
-/* Hide if empty */
-#search-results:empty {
-    display: none;
-}
-
-/* --- The Individual Result Card --- */
-.result-item {
-    border-bottom: 1px solid var(--border);
-    transition: all 0.2s ease;
-}
-
-.result-item:last-child {
-    border-bottom: none;
-}
-
-/* Hover Effect: Light Orange Background + Left Border Highlight */
-.result-item:hover {
-    background: #fff5f0; 
-    padding-left: 0.5rem; /* Slight nudge animation */
-}
-
-/* --- The Link Container --- */
-.result-item a {
-    text-decoration: none; /* Kills the blue underline */
-    display: block;
-    padding: 1rem 1.25rem;
-    color: var(--charcoal); /* Force correct color */
-    width: 100%;
-}
-
-/* --- Result Typography --- */
-.result-item h3 {
-    margin: 0 0 0.4rem 0;
-    font-size: 1.1rem;
-    font-family: var(--font-heading);
-    color: var(--rust-orange); /* Title is Rust Orange */
-    font-weight: 700;
-}
-
-/* Darken title on hover for contrast */
-.result-item:hover h3 {
-    color: var(--rust-orange-hover);
-}
-
-/* --- The "Collection" Badge --- */
-.result-item .badge {
-    display: inline-block;
-    font-size: 0.7rem;
-    font-family: var(--font-code);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--charcoal);
-    color: #fff;
-    vertical-align: middle;
-    opacity: 0.85;
-}
-
-/* Different color for "Projects" vs "Blog" (Optional Polish) */
-.result-item .badge:contains("projects") {
-    background: #2d7a31; /* Greenish for projects? */
-}
-
-/* --- The Score / Metadata --- */
-.result-item .meta {
-    font-size: 0.85rem;
-    color: #888;
-    margin-top: 0.25rem;
-    display: block;
 }

@@ -4,6 +4,7 @@ use crate::io::fs::{copy_static_files, load_templates};
 use anyhow::{Context, Result};
 use minijinja::{Environment, Value, context};
 use rayon::prelude::*;
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
@@ -20,6 +21,15 @@ pub struct Site {
     fresh_build: bool,
     config_hash: [u8; 32],
     template_hash: HashMap<PathBuf, [u8; 32]>,
+}
+
+#[derive(Serialize)]
+struct SearchIndexItem<'a> {
+    id: String,
+    title: String,
+    url: &'a str,
+    content: &'a str,
+    collection: &'a str,
 }
 
 impl Site {
@@ -144,10 +154,12 @@ impl Site {
             file_cache: post_cache,
             global_hash: GlobalHash {
                 config_hash: self.config_hash,
-                templates_hash: self.template_hash,
+                templates_hash: self.template_hash.clone(),
             },
         };
         new_cache.save(&self.output_dir)?;
+
+        self.generate_search_index(&content_items)?;
 
         Ok(())
     }
@@ -156,7 +168,7 @@ impl Site {
         &self,
         all_items: &[ContentItem],
         collections: &HashMap<String, Vec<&ContentItem>>,
-        home_content: Option<&ContentItem>
+        home_content: Option<&ContentItem>,
     ) -> Result<()> {
         // We pass posts and collections
         let ctx = context! {
@@ -271,6 +283,29 @@ impl Site {
             }
         }
 
+        Ok(())
+    }
+
+    fn generate_search_index(&self, items: &[ContentItem]) -> Result<()> {
+        let index: Vec<SearchIndexItem> = items
+            .iter()
+            .filter(|item| item.collection != "pages" || item.url != "/")
+            .map(|item| SearchIndexItem {
+                id: item.url.clone(),
+                title: item
+                    .frontmatter
+                    .as_ref()
+                    .and_then(|fm| fm.title.clone())
+                    .unwrap_or_else(|| "Untitled".to_string()),
+                url: &item.url,
+                content: &item.text_content,
+                collection: &item.collection,
+            })
+            .collect();
+
+        let json = serde_json::to_string(&index)?;
+        let mut f = File::create(self.output_dir.join("search.json"))?;
+        f.write_all(json.as_bytes())?;
         Ok(())
     }
 }

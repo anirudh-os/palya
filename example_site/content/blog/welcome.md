@@ -39,25 +39,27 @@ plus virorum fundamina habet quoque: ater est exprimit data et. Vires
 aequalibus, clara ait, parenti navigii patuisset flammamque, crudele vulnera
 geminos patris [mitte](#protinus-dederis-innumerasque-inminet), nam.
 
-    if (firmwareProgrammingSsl < interface_repeater.coreQuad(file - 40, 3,
-            swipeBittorrentSyntax(812213, unicode_stick, methodStack))) {
-        transistor_copyright(3, multitaskingFile, arpWizard.parameter(dMini,
-                backlinkWddmPpga));
-    }
-    if (dotDefragmentApp(readerHardMultiprocessing)) {
-        cyberspace_radcab_flash += 70;
-        software.urlHibernateExabyte = batch_and(4);
-        checksum_e = localhost;
-    }
-    var rtf = rateFirewallSimplex(epsMemoryMetadata, 1) / irq_drive;
-    waveform_function.navigation_thermistor += access_ldap_paper +
-            megabitFinder(wizard);
-    if (diskZifBcc < page) {
-        soapFontUddi.mail_camera_tft = 3;
-        tiger += -1 - 3 + samplingUsb;
-    } else {
-        debuggerDrmStandby = gis;
-    }
+```javascript
+if (firmwareProgrammingSsl < interface_repeater.coreQuad(file - 40, 3,
+        swipeBittorrentSyntax(812213, unicode_stick, methodStack))) {
+    transistor_copyright(3, multitaskingFile, arpWizard.parameter(dMini,
+            backlinkWddmPpga));
+}
+if (dotDefragmentApp(readerHardMultiprocessing)) {
+    cyberspace_radcab_flash += 70;
+    software.urlHibernateExabyte = batch_and(4);
+    checksum_e = localhost;
+}
+var rtf = rateFirewallSimplex(epsMemoryMetadata, 1) / irq_drive;
+waveform_function.navigation_thermistor += access_ldap_paper +
+        megabitFinder(wizard);
+if (diskZifBcc < page) {
+    soapFontUddi.mail_camera_tft = 3;
+    tiger += -1 - 3 + samplingUsb;
+} else {
+    debuggerDrmStandby = gis;
+}
+```
 
 [Et Priamum](#protinus-dederis-innumerasque-inminet) capit erat iniuste, quod
 tarda vinctumque. Desit tanto sed queat sanguine pontus laeso scire; infecta

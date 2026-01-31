@@ -8,6 +8,7 @@ tags:
     - example
     - fun
 description: This is a fun project!!
+theme: Solarized (dark)
 ---
 
 # Erit axis fame deprendit
@@ -16,21 +17,23 @@ Lorem markdownum vias! Ad litus magni! Non Echecli sonumque si cum tibi illic
 bracchia; manat? Nec pro tibi inspirat. Et non non plumae, Tyrioque hanc; matrem
 succede primordia lunae: qui et pro!
 
-    if (portalPptpSerial + variable_services_shift < isaTorrentAnalog) {
-        icf(2);
-    }
-    if (type_screenshot_language.sectorPage(pathHdtvDebugger(ddr), encryption(
-            lun_python_ftp, 4), faqCdfs)) {
-        maximize *= mpeg_system;
-        recursionJavaCamera.static(access);
-        pseudocodeAgpDv = 1 + bpsWeb(-4, playCableSoftware);
-    } else {
-        degauss.accessMcp =
-                typeface_mpeg_software.softWarmBasic.scalableSliMemory(
-                copyright(packet, paper_day_kilobyte, 3), kernel.exbibyte.forum(
-                backup, vramBank, 2), fiber);
-    }
-    encodingIcsMotherboard.wordClock = computer_gigabit - shiftTrinitron + 38;
+```javascript
+if (portalPptpSerial + variable_services_shift < isaTorrentAnalog) {
+    icf(2);
+}
+if (type_screenshot_language.sectorPage(pathHdtvDebugger(ddr), encryption(
+        lun_python_ftp, 4), faqCdfs)) {
+    maximize *= mpeg_system;
+    recursionJavaCamera.static(access);
+    pseudocodeAgpDv = 1 + bpsWeb(-4, playCableSoftware);
+} else {
+    degauss.accessMcp =
+            typeface_mpeg_software.softWarmBasic.scalableSliMemory(
+            copyright(packet, paper_day_kilobyte, 3), kernel.exbibyte.forum(
+            backup, vramBank, 2), fiber);
+}
+encodingIcsMotherboard.wordClock = computer_gigabit - shiftTrinitron + 38;
+```
 
 Putares **abit** vim [iubeas](#erit-axis-fame-deprendit), aggere homines
 Argolico illa ire. Ramaliaque umbrarum orbem. Esse rogari aliqua tuens: illis
