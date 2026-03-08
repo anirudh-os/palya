@@ -55,6 +55,7 @@ pub struct ContentItem {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
+    pub author: String,
     pub title: String,
     pub description: Option<String>,
     pub base_url: Option<String>,
@@ -266,6 +267,7 @@ impl Config {
                 if !default.exists() {
                     return Ok((
                         Config {
+                            author: "Shadow".to_string(),
                             title: "My Site".to_string(),
                             description: None,
                             base_url: Some("".to_string()),
