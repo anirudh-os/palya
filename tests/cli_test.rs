@@ -3,20 +3,21 @@ use std::fs;
 
 #[test]
 fn test_end_to_end_build() {
-    // 1. Create a temp directory 
+    // Create a temp directory 
     let temp_dir = tempfile::tempdir().unwrap();
     let input_dir = temp_dir.path().join("content");
     let output_dir = temp_dir.path().join("dist");
     let templates_dir = temp_dir.path().join("templates");
 
-    // 2. Setup Dummy Files
+    // Setup Dummy Files
     fs::create_dir(&input_dir).unwrap();
+    fs::create_dir(input_dir.join("content")).unwrap();
     fs::create_dir(&templates_dir).unwrap();
     
-    fs::write(input_dir.join("test.md"), "---\ntitle: T\n---\n# Hi").unwrap();
-    fs::write(templates_dir.join("post.j2"), "{{ post.content }}").unwrap();
+    fs::write(input_dir.join("content").join("test.md"), "---\ntitle: T\n---\n# Hi").unwrap();
+    fs::write(templates_dir.join("page.j2"), "{{ page.content }}").unwrap();
 
-    // 3. Run the binary
+    // Run the binary
     let mut cmd = cargo_bin_cmd!("palya");
     cmd.arg("--input").arg(&input_dir)
        .arg("--output").arg(&output_dir)
@@ -24,7 +25,7 @@ fn test_end_to_end_build() {
        .assert()
        .success(); // Ensure exit code 0
 
-    // 4. Verify Output
+    // Verify Output
     let expected_file = output_dir.join("test/index.html");
     assert!(expected_file.exists());
     

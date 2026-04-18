@@ -1,362 +1,300 @@
-/* --- Variables --- */
+/* --- Terminal.css: Pink Panther (Light Mode) Variant --- */
+/* Base source: https://terminalcss.xyz */
+@import url('https://cdn.staticdelivr.com/gfonts/css2?family=Fira+Code:wght@300..700&display=swap');
+
 :root {
-    --rust-orange: #d74700;
-    --rust-orange-hover: #b53c00;
-    --charcoal: #2b2520;
-    --charcoal-light: #3b3632;
-    --paper: #f9f8f6;
-    --surface: #ffffff;
-    --border: #e6e3df;
-    --code-bg: #2b2520;
-
-    --radius: 8px;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08);
-
-    --font-heading: 'Merriweather', serif; 
-    --font-body: 'Fira Sans', -apple-system, sans-serif;
-    --font-code: 'Fira Code', monospace;
+  /* YOUR PROVIDED COLORS */
+  --background: #fff4f2;
+  --foreground: #424140;
+  --accent: #8f6a5e;
+  
+  /* Layout Config */
+  --radius: 0px;  /* Sharp edges define this look */
+  --font-size: 1rem;
+  --line-height: 1.54em;
+  --page-width: 900px;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+/* --- 1. RESET & TYPOGRAPHY --- */
+html { box-sizing: border-box; }
+*, *:before, *:after { box-sizing: inherit; margin: 0; padding: 0; }
 
 body {
-    font-family: var(--font-body);
-    line-height: 1.75;
-    font-size: 18px;
-    color: var(--charcoal);
-    background: var(--paper);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+  font-family: "Fira Code", "JetBrains Mono", monospace;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  background-color: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-/* --- Header --- */
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+a:hover {
+  background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+  text-decoration: none;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600; /* As per Terminal.css spec */
+  margin: 25px 0;
+  letter-spacing: 0;
+}
+h1 { font-size: calc(var(--font-size) * 1.45); }
+h2 { 
+    font-size: calc(var(--font-size) * 1.35); 
+    border-bottom: 2px solid var(--accent); /* Added distinct underline */
+    padding-bottom: 0.5rem;
+}
+h3 { font-size: calc(var(--font-size) * 1.15); }
+
+/* Standard Elements */
+p, ul, ol, img, figure, table { margin: 25px 0; }
+hr {
+  border: 0;
+  border-bottom: 2px solid var(--accent);
+  margin: 2rem 0;
+}
+
+/* --- 2. HEADER & LAYOUT --- */
 header {
-    background: var(--charcoal);
-    border-bottom: 4px solid var(--rust-orange);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow-md);
+  background: var(--background);
+  border-bottom: 4px solid var(--accent); /* Thick top border */
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-inner {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--charcoal);
-    position: relative;
-    z-index: 102;
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--background);
+  position: relative;
+  z-index: 102;
 }
 
+/* Site Title */
 header h1 {
-    margin: 0;
-    font-size: 1.2rem;
-    font-family: var(--font-code);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
+  margin: 0;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  border: 4px solid var(--foreground); /* The "Blocky" Look */
+  padding: 5px 10px;
+  display: inline-block;
 }
 
 header h1 a {
-    color: #e0e0e0;
-    text-decoration: none;
-    transition: color 0.2s;
+  color: var(--foreground);
 }
-
 header h1 a:hover {
-    color: var(--rust-orange);
+  background: transparent;
+  color: var(--accent);
 }
 
-/* --- Search Toggle --- */
+main {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  width: 100%;
+  flex: 1;
+}
+
+/* --- 3. SEARCH (Styled to match Inputs) --- */
 #search-toggle {
-    background: transparent;
-    border: none;
-    color: #e0e0e0;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+  background: transparent;
+  color: var(--accent);
+  padding: 5px 18px;
+  border: 4px solid var(--accent);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.15s linear;
 }
 
 #search-toggle:hover {
-    background: rgba(255,255,255,0.1);
-    color: var(--rust-orange);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
-/* --- Search Wrapper --- */
 #search-wrapper {
-    background: var(--charcoal-light);
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 500px;
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-    z-index: 101;
-    box-shadow: var(--shadow-md);
+  background: var(--background);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  border-bottom: 2px solid var(--accent);
+  max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+  z-index: 101;
 }
+#search-wrapper.hidden { max-height: 0; border: none; }
 
-#search-wrapper.hidden {
-    max-height: 0;
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* --- Search Input --- */
 .search-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem 1.5rem;
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 1.5rem;
 }
 
 #search-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: 1.1rem;
-    border-radius: var(--radius);
-    border: 2px solid transparent;
-    background: var(--surface);
-    color: var(--charcoal);
+  width: 100%;
+  background: transparent;
+  color: var(--foreground);
+  border: 2px solid var(--foreground); /* Thick input border */
+  padding: 10px;
+  font: inherit;
+  outline: none;
 }
-
 #search-input:focus {
-    outline: none;
-    border-color: var(--rust-orange);
+  border-color: var(--accent);
+  box-shadow: 4px 4px 0 var(--accent); /* Hard shadow effect */
 }
 
-/* --- Search Results --- */
 #search-results {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-top: 0.5rem;
-    max-height: 400px;
-    overflow-y: auto;
-    box-shadow: var(--shadow-md);
+  margin-top: 15px;
+  border: 2px solid var(--foreground);
+  background: var(--background);
+  max-height: 400px;
+  overflow-y: auto;
 }
-
-#search-results:empty {
-    display: none;
-}
+#search-results:empty { display: none; }
 
 .result-item {
-    border-bottom: 1px solid var(--border);
-    transition: all 0.2s ease;
+  border-bottom: 1px solid var(--foreground);
+  padding: 0;
 }
-
-.result-item:last-child {
-    border-bottom: none;
-}
-
-.result-item:hover {
-    background: #fff5f0;
-    padding-left: 0.5rem;
-}
-
 .result-item a {
-    display: block;
-    padding: 1rem 1.25rem;
-    text-decoration: none;
-    color: var(--charcoal);
+  display: block;
+  padding: 12px;
+  color: var(--foreground);
 }
-
-.result-item h3 {
-    margin: 0 0 0.4rem 0;
-    font-size: 1.1rem;
-    font-family: var(--font-heading);
-    color: var(--rust-orange);
+.result-item a:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
+.result-item h3 { margin: 0 0 5px 0; color: var(--accent); }
 
-.result-item:hover h3 {
-    color: var(--rust-orange-hover);
-}
-
-.result-item .meta {
-    font-size: 0.85rem;
-    color: #888;
-}
-
-/* --- Layout --- */
-main {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 3rem 1.5rem;
-    flex: 1;
-    width: 100%;
-}
-
-/* --- Typography --- */
-h1, h2, h3, h4 {
-    font-family: var(--font-heading);
-    line-height: 1.2;
-    margin-top: 2.5rem;
-    margin-bottom: 1rem;
-}
-
-article h1 {
-    font-size: 2.75rem;
-    margin-top: 0;
-}
-
-article h2 {
-    font-size: 1.8rem;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 0.5rem;
-}
-
-article p {
-    font-size: 1.125rem;
-    margin-bottom: 1.5rem;
-    color: #4a4540;
-}
-
-/* --- Post List --- */
-main > ul {
-    list-style: none;
-    margin-top: 1rem;
-    border-top: 1px solid var(--border);
-}
-
-main > ul > li {
-    padding: 1rem 0.5rem;
-    border-bottom: 1px solid var(--border);
-    color: #666;
-    transition: all 0.2s;
-}
-
-main > ul > li:hover {
-    background: white;
-    padding-left: 1rem;
-    border-left: 4px solid var(--rust-orange);
-}
-
-main > ul > li a {
-    color: var(--charcoal);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-main > ul > li:hover a {
-    color: var(--rust-orange);
-}
-
-/* --- Cards --- */
+/* --- 4. GRID & CARDS (Projects) --- */
 .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin: 2rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
 }
 
+/* Styling Cards to look like 'fieldset' from Terminal.css */
 .card {
-    background: var(--surface);
-    padding: 1.5rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.3s;
+  border: 2px solid var(--foreground);
+  padding: 1.5rem;
+  transition: transform 0.1s;
+  background: var(--background);
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--rust-orange);
+  border-color: var(--accent);
+  box-shadow: 6px 6px 0 var(--accent); /* The signature hard shadow */
+  transform: translate(-2px, -2px);
 }
 
-.card h3 {
-    margin-top: 0;
-    font-size: 1.3rem;
+.card h3 { margin-top: 0; }
+.card h3 a { color: var(--foreground); font-weight: bold; }
+.card h3 a:hover { color: var(--accent); background: transparent; }
+
+/* --- 5. LISTS (Blog Posts) --- */
+main > ul {
+  list-style: none;
+  padding: 0;
+  border-top: 2px solid var(--foreground);
 }
 
-.card h3 a {
-    text-decoration: none;
-    color: var(--charcoal);
-    background-image: linear-gradient(var(--rust-orange), var(--rust-orange));
-    background-size: 0% 2px;
-    background-repeat: no-repeat;
-    background-position: left bottom;
-    transition: background-size 0.3s, color 0.3s;
+main > ul > li {
+  border-bottom: 1px solid var(--foreground);
+  padding: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
-.card:hover h3 a {
-    background-size: 100% 2px;
-    color: var(--rust-orange);
+main > ul > li:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  padding-left: 10px; /* Slight nudge */
 }
 
-/* --- Tags --- */
+main > ul > li a {
+  color: var(--foreground);
+  font-weight: 600;
+}
+main > ul > li a:hover { color: var(--accent); background: transparent; }
+
+.date {
+  font-family: inherit;
+  color: var(--accent);
+  font-size: 0.9em;
+  min-width: 120px;
+}
+
+/* --- 6. TAGS & BADGES --- */
 .tags {
-    list-style: none;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+  list-style: none;
+  display: flex;
+  gap: 10px;
+  padding: 0;
+  margin: 1.5rem 0;
 }
 
 .tags li a {
-    padding: 0.35rem 1rem;
-    font-size: 0.85rem;
-    font-family: var(--font-code);
-    background: #e8e6e3;
-    border-radius: 99px;
-    text-decoration: none;
-    color: var(--charcoal-light);
-    font-weight: 600;
-    transition: all 0.2s;
+  display: inline-block;
+  border: 1px solid var(--accent); /* Outline style */
+  color: var(--accent);
+  padding: 4px 12px;
+  font-size: 0.9em;
 }
 
 .tags li a:hover {
-    background: var(--rust-orange);
-    color: white;
+  background: var(--accent);
+  color: var(--background);
 }
 
-/* --- Code --- */
+.badge {
+  font-size: 0.75rem;
+  border: 1px solid var(--foreground);
+  padding: 2px 6px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+/* --- 7. CODE BLOCKS --- */
 pre {
-    padding: 1.5rem;
-    border-radius: var(--radius);
-    overflow-x: auto;
-    margin: 2rem 0;
-    font-size: 0.95rem;
-    box-shadow: var(--shadow-md);
-    font-family: var(--font-code);
-    line-height: 1.5;
-}
-
-pre code {
-    background: transparent !important;
-    padding: 0;
-    border: none;
-    color: inherit;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent) !important;
+  color: color-mix(in srgb, var(--foreground) 5%, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  border-left: 4px solid var(--accent);
+  padding: 20px;
+  overflow-x: auto;
+  margin: 2rem 0;
 }
 
 :not(pre) > code {
-    background: #edebe8;
-    color: var(--rust-orange-hover);
-    padding: 0.2em 0.4em;
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-family: var(--font-code);
-    border: 1px solid #ddd;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  color: color-mix(in srgb, var(--foreground) 5%, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  padding: 0 6px;
 }
 
-/* --- Footer --- */
+/* --- 8. FOOTER --- */
 footer {
-    background: var(--charcoal);
-    border-top: 2px solid var(--rust-orange);
-    padding: 1.5rem 0;
-    text-align: center;
-    color: #888;
-    font-size: 0.9rem;
-    font-family: var(--font-code);
+  border-top: 4px solid var(--accent);
+  text-align: center;
+  margin-top: auto;
 }
+footer p { color: var(--foreground); font-size: 0.9em; }

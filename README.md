@@ -49,7 +49,7 @@ my_site/
 ## Configuration (palya.toml)
 
 The configuration file is optional.
-If present, it must be located in the site’s root directory.
+If present, it must be located in the site's root directory.
 
 ```toml
 title = "My Awesome Blog"
@@ -70,6 +70,18 @@ The example site includes:
 - `post.j2` --- individual post template
 
 You are free to design and structure templates however you like.
+
+### Template Context Keys
+
+The variable name available in a template depends on which *content collection* the file belongs to (i.e. which subdirectory under `content/` it lives in):
+
+| Collection (`content/<dir>/`) | Context variable |
+|-------------------------------|-----------------|
+| `blog/`, `notes/`, `tutorials/`, etc. | `post` |
+| `projects/` | `project` |
+| `pages/` | `page` |
+
+So in a `post.j2` template you access `{{ post.frontmatter.title }}`, while in a `project.j2` template you must use `{{ project.frontmatter.title }}`. Using the wrong variable name will result in an *undefined value* error at build time.
 
 ## Example
 

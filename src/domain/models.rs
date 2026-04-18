@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use blake3::hash;
 use once_cell::sync::Lazy;
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Parser, Tag, TagEnd, html};
@@ -17,45 +17,134 @@ use syntect::parsing::SyntaxSet;
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(|| SyntaxSet::load_defaults_newlines());
 static THEME_SET: Lazy<ThemeSet> = Lazy::new(|| ThemeSet::load_defaults());
 
+/// Represents the possible formats for `tags` in YAML frontmatter.
+///
+/// This enum allows tags to be written in several convenient forms in
+/// frontmatter while still deserializing into a single Rust type.
+///
+/// If the `tags` field is omitted entirely, it will deserialize as `None`
+/// when used as `Option<Tags>` in `FrontMatter`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Tags {
+    /// A single tag string.
+    ///
+    /// ```yaml
+    /// tags: "rust"
+    /// ```
     Single(String),
+
+    /// Multiple tags.
+    ///
+    /// ```yaml
+    /// tags: ["rust", "web"]
+    /// ```
     Multiple(Vec<String>),
+
+    /// Explicitly no tags.
+    ///
+    /// ```yaml
+    /// tags: null
+    /// ```
     Null,
 }
 
+/// Metadata parsed from the YAML frontmatter of Markdown files.
+///
+/// Frontmatter is extracted from the top of content files (such as blog posts
+/// or projects) and provides configuration for rendering, including titles,
+/// templates, and feature flags. All fields are optional unless otherwise noted,
+/// allowing flexible per-file customization.
+///
+/// # Example
+/// ```yaml
+/// title: "My Blog Post"
+/// description: "An example post"
+/// subtitle: "A subtitle"
+/// stack: ["Rust", "WebAssembly"]
+/// links:
+///   source: "https://github.com/example"
+/// date: "2023-10-01"
+/// slug: "my-post"
+/// template: "post.j2"
+/// draft: false
+/// theme: "base16-ocean.dark"
+/// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FrontMatter {
+    /// The main title of the page, post, or project.
     pub title: Option<String>,
+
+    /// A brief description or summary of the content.
     pub description: Option<String>,
+
+    /// An optional subtitle rendered below the title.
     pub subtitle: Option<String>,
+
+    /// A list of technologies or tools used (for example in project pages).
     pub stack: Option<Vec<String>>,
+
+    /// A map of named links, such as links to source code or live demos.
     pub links: Option<HashMap<String, String>>,
+
+    /// The publication or creation date.
     pub date: Option<String>,
+
+    /// Custom URL slug. If absent, it may be derived from the filename.
     pub slug: Option<String>,
+
+    /// Name of the template used for rendering.
     pub template: Option<String>,
 
+    /// If `true`, the file is treated as a draft and skipped during rendering
+    /// unless draft rendering is enabled.
     #[serde(default)]
     pub draft: bool,
+
+    /// Optional tags associated with the content.
     pub tags: Option<Tags>,
+
+    /// Name of the syntax highlighting theme.
     pub theme: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+/// Represents a processed content item (e.g., a page, post, or project) after parsing.
+///
+/// This struct holds all relevant data for a single piece of content, including its metadata,
+/// rendered HTML, URL, and search-friendly text. It's created during the build process by
+/// parsing Markdown files, extracting frontmatter, and converting content to HTML. The
+/// resulting items are used for rendering templates and generating the site.
+///
+/// # Example
+/// An item might represent a blog post with frontmatter, HTML body, and metadata
+/// for template rendering and site navigation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContentItem {
+    /// Parsed metadata from the file's YAML frontmatter.
     pub frontmatter: Option<FrontMatter>,
+
+    /// The rendered HTML content after processing Markdown.
     pub content: String,
+
+    /// The final URL path for the item (e.g., "/blog/my-post/").
     pub url: String,
+
+    /// Normalized list of tags as strings (derived from frontmatter).
     pub tags: Option<Vec<String>>,
+
+    /// The original file path of the input Markdown file.
     pub source: PathBuf,
+
+    /// The category or directory-based group (e.g., "blog", "projects").
     pub collection: String,
+
+    /// Plain text version of the content, used for search indexing.
     pub text_content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub author: String,
+    pub author: Option<String>,
     pub title: String,
     pub description: Option<String>,
     pub base_url: Option<String>,
@@ -71,38 +160,35 @@ pub struct GlobalHash {
 pub struct BuildCache {
     pub file_cache: HashMap<PathBuf, [u8; 32]>,
     pub global_hash: GlobalHash,
+    pub parsed_items: HashMap<PathBuf, ContentItem>,
 }
 
 impl ContentItem {
-    pub fn from_file(
-        base_path: &Path,
-        input_path: PathBuf,
-        drafts: &bool,
-    ) -> Result<(Option<ContentItem>, [u8; 32])> {
+    pub fn from_file(input_path: PathBuf) -> Result<(String, [u8; 32])> {
         let content = fs::read_to_string(&input_path)
             .with_context(|| format!("Couldn't read contents of {}", input_path.display()))?;
         let content_hash = *hash(content.as_bytes()).as_bytes();
-        let post = Self::parse(content, base_path, input_path, drafts)?;
-        Ok((post, content_hash))
+        // let item = Self::parse(content, base_path, input_path, parse_drafts)?;
+        Ok((content, content_hash))
     }
 
     pub fn parse(
-        content: String,
+        content: &str,
         base_path: &Path,
-        input_path: PathBuf,
-        drafts: &bool,
-    ) -> Result<Option<ContentItem>> {
+        input_path: &PathBuf,
+        parse_drafts: &bool,
+    ) -> Result<ContentItem> {
         let (frontmatter, content_body) = if let Some(rest) = content.strip_prefix("---") {
             if let Some((fm, content)) = rest.split_once("---") {
-                let fm = Some(from_str::<FrontMatter>(fm).with_context(|| {
+                let fm = Some(from_str::<FrontMatter>(fm.trim()).with_context(|| {
                     format!("Failed to parse frontmatter: {:?}", input_path.clone())
                 })?);
                 (fm, content)
             } else {
-                (None, content.as_str())
+                (None, content)
             }
         } else {
-            (None, content.as_str())
+            (None, content)
         };
 
         let relative_path = input_path.strip_prefix(base_path).unwrap_or(&input_path);
@@ -116,14 +202,16 @@ impl ContentItem {
         let mut tags: Option<Vec<String>> = None;
 
         if let Some(fm) = &frontmatter {
-            if fm.draft && !*drafts {
-                return Ok(None);
+            if fm.draft && !*parse_drafts {
+                return ContentItem::get_item(input_path, Ok(None));
             }
             tags = fm.get_tags();
         }
 
         let parser = Parser::new(content_body);
         let mut new_events = Vec::new();
+        let mut text_content = String::new();
+
         let mut code_buffer = String::new();
         let mut in_code_block = false;
         let mut code_lang: Option<String> = None;
@@ -152,6 +240,7 @@ impl ContentItem {
         for event in parser {
             match event {
                 Event::Start(Tag::CodeBlock(kind)) => {
+                    text_content.push(' ');
                     in_code_block = true;
                     code_lang = match kind {
                         CodeBlockKind::Fenced(lang) => Some(lang.to_string()),
@@ -160,6 +249,7 @@ impl ContentItem {
                     code_buffer.clear();
                 }
                 Event::End(TagEnd::CodeBlock) => {
+                    text_content.push(' ');
                     in_code_block = false;
 
                     let syntax = code_lang
@@ -173,6 +263,7 @@ impl ContentItem {
                     new_events.push(Event::Html(CowStr::from(html)));
                 }
                 Event::Text(t) => {
+                    text_content.push_str(&t);
                     if in_code_block {
                         code_buffer.push_str(&t);
                     } else {
@@ -203,17 +294,19 @@ impl ContentItem {
             format!("/{}/{}/", collection, slug)
         };
 
-        let text_content = ContentItem::extract_text(content_body);
+        // let text_content = ContentItem::extract_text(content_body);
 
-        Ok(Some(ContentItem {
+        let item_option = Ok(Some(ContentItem {
             frontmatter,
             content: html_output,
             url,
             tags,
-            source: input_path,
+            source: input_path.clone(),
             collection,
             text_content,
-        }))
+        }));
+
+        ContentItem::get_item(input_path, item_option)
     }
 
     pub fn template_name(&self) -> String {
@@ -223,6 +316,9 @@ impl ContentItem {
             }
         }
 
+        // This could be made more dynamic as the `templates` directory might have the
+        // required template; we could also just get the names of all templates in the template dir
+        // while walking the dir
         match self.collection.as_str() {
             "blog" => "post.j2".to_string(),
             "projects" => "project.j2".to_string(),
@@ -236,44 +332,54 @@ impl ContentItem {
         output_dir.join(slug_path).join("index.html")
     }
 
-    fn extract_text(markdown: &str) -> String {
-        let parser = Parser::new(markdown);
-        let mut text = String::with_capacity(markdown.len());
+    // fn extract_text(markdown: &str) -> String {
+    //     let parser = Parser::new(markdown);
+    //     let mut text = String::with_capacity(markdown.len());
 
-        for event in parser {
-            match event {
-                Event::Text(t) => text.push_str(&t),
-                Event::Code(c) => {
-                    text.push(' ');
-                    text.push_str(&c);
-                    text.push(' ');
-                }
-                Event::SoftBreak | Event::HardBreak => text.push(' '),
-                Event::End(TagEnd::Paragraph | TagEnd::Item | TagEnd::Heading(_)) => text.push(' '),
-                _ => {}
-            }
+    //     for event in parser {
+    //         match event {
+    //             Event::Text(t) => text.push_str(&t),
+    //             Event::Code(c) => {
+    //                 text.push(' ');
+    //                 text.push_str(&c);
+    //                 text.push(' ');
+    //             }
+    //             Event::SoftBreak | Event::HardBreak => text.push(' '),
+    //             Event::End(TagEnd::Paragraph | TagEnd::Item | TagEnd::Heading(_)) => text.push(' '),
+    //             _ => {}
+    //         }
+    //     }
+
+    //     text
+    // }
+
+    fn get_item(input_path: &Path, item_option: Result<Option<ContentItem>>) -> Result<ContentItem> {
+        match item_option {
+            Ok(Some(item)) => Ok(item),
+            Ok(None) => Err(anyhow!(
+                "Skipping {:?} due to error: ContentItem could not be parsed!",
+                input_path
+            )),
+            Err(e) => Err(anyhow!("Skipping {:?} due to error: {}", input_path, e)),
         }
-
-        text
     }
 }
 
 impl Config {
     pub fn load(input_dir: &Path, config_path: Option<&PathBuf>) -> Result<(Config, [u8; 32])> {
+        let default_config = Config {
+            author: Some("Shadow".to_string()),
+            title: "My Site".to_string(),
+            description: None,
+            base_url: Some("".to_string()),
+        };
+
         let path_to_read = match config_path {
             Some(p) => p.clone(),
             None => {
                 let default = input_dir.join("palya.toml");
                 if !default.exists() {
-                    return Ok((
-                        Config {
-                            author: "Shadow".to_string(),
-                            title: "My Site".to_string(),
-                            description: None,
-                            base_url: Some("".to_string()),
-                        },
-                        [0; 32],
-                    ));
+                    return Ok((default_config, [0; 32]));
                 }
                 default
             }
@@ -309,7 +415,14 @@ impl BuildCache {
     pub fn new(output_dir: &Path) -> Result<Self> {
         let cache_path = output_dir.join(".palya_cache.json");
         let cache_str = read_to_string(&cache_path)?;
-        let cache = serde_json::from_str::<BuildCache>(&cache_str)?;
+        let mut cache: serde_json::Value = serde_json::from_str(&cache_str)?;
+
+        // Handle migration: if parsed_items doesn't exist, add empty map
+        if !cache.as_object().unwrap().contains_key("parsed_items") {
+            cache.as_object_mut().unwrap().insert("parsed_items".to_string(), serde_json::json!({}));
+        }
+
+        let cache: BuildCache = serde_json::from_value(cache)?;
         Ok(cache)
     }
 

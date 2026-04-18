@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use minijinja::{Environment, Value, context};
 use rayon::prelude::*;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -98,13 +98,12 @@ impl Site {
             .collect();
 
         // Parse content
-        let content_files: Vec<(PathBuf, ContentItem, [u8; 32])> = paths
+        let content_files: Vec<(PathBuf, String, [u8; 32])> = paths
             .par_iter()
             .filter_map(|p| {
                 // Pass content_path as base to calculate collection
-                match ContentItem::from_file(&content_path, p.clone(), &self.consider_drafts) {
-                    Ok((Some(post), hash)) => Some((p.clone(), post, hash)),
-                    Ok((None, _)) => None,
+                match ContentItem::from_file(p.clone()) {
+                    Ok((content, hash)) => Some((p.clone(), content, hash)),
                     Err(e) => {
                         eprintln!("Warning: Skipping {:?} due to error: {}", p, e);
                         None
@@ -113,23 +112,71 @@ impl Site {
             })
             .collect();
 
-        let mut post_cache = HashMap::new();
+        let post_cache: HashMap<PathBuf, [u8; 32]> = content_files
+            .iter()
+            .map(|(path, _, hash)| (path.clone(), *hash))
+            .collect();
+
+        // Create a fast lookup set of paths that actually changed
+        let dirty_paths: std::collections::HashSet<PathBuf> = content_files
+            .par_iter()
+            .filter_map(|(p, _, hash)| {
+                let is_dirty = if self.fresh_build {
+                    true
+                } else if let Some(cache) = &self.cache {
+                    cache.file_cache.get(p).unwrap_or(&[0; 32]) != hash
+                } else {
+                    true
+                };
+                if is_dirty { Some(p.clone()) } else { None }
+            })
+            .collect();
+
+        if !self.fresh_build && dirty_paths.is_empty() {
+            // If nothing has changed at all, don't update cache and don't do any I/O.
+            return Ok(());
+        }
+
+        let parsed_items: Vec<ContentItem> = content_files
+            .par_iter()
+            .filter_map(|(input_path, content, _hash)| {
+                if dirty_paths.contains(input_path) {
+                    match ContentItem::parse(
+                        content,
+                        &content_path,
+                        input_path,
+                        &self.consider_drafts,
+                    ) {
+                        Ok(item) => Some(item),
+                        Err(e) => {
+                            eprintln!("{}", e);
+                            None
+                        }
+                    }
+                } else {
+                    // Use cached parsed item to avoid expensive re-parsing
+                    self.cache
+                        .as_ref()
+                        .and_then(|c| c.parsed_items.get(input_path).cloned())
+                }
+            })
+            .collect();
+
         let mut content_items: Vec<ContentItem> = Vec::new();
         let mut index_item: Option<ContentItem> = None;
 
-        // Aggregation for "Collections"
-        let mut collections_map: HashMap<String, Vec<&ContentItem>> = HashMap::new();
-
-        for (path, item, hash) in content_files.into_iter() {
-            post_cache.insert(path, hash);
-
-            // To check if its the index page
-            if item.collection == "pages" && item.source.file_stem().unwrap() == "index" {
-                index_item = Some(item);
+        // Synchronously partition the collected items
+        for item in &parsed_items {
+            if item.collection == "pages" && item.source.file_stem().map_or(false, |s| s == "index")
+            {
+                index_item = Some(item.clone());
             } else {
-                content_items.push(item);
+                content_items.push(item.clone());
             }
         }
+
+        // Aggregation for "Collections"
+        let mut collections_map: HashMap<String, Vec<&ContentItem>> = HashMap::new();
 
         // Sort items by date descending
         content_items.sort_by(|a, b| {
@@ -146,8 +193,8 @@ impl Site {
                 .push(item);
         }
 
-        self.render_content(&content_items, &post_cache)?;
-        self.render_index(&content_items, &collections_map, index_item.as_ref())?; // Pass map here
+        self.render_content(&content_items, &dirty_paths)?;
+        self.render_index(&content_items, &collections_map, index_item.as_ref())?; 
         self.render_tags(&content_items)?;
 
         let new_cache = BuildCache {
@@ -156,6 +203,10 @@ impl Site {
                 config_hash: self.config_hash,
                 templates_hash: self.template_hash.clone(),
             },
+            parsed_items: parsed_items
+                .iter()
+                .map(|item| (item.source.clone(), item.clone()))
+                .collect(),
         };
         new_cache.save(&self.output_dir)?;
 
@@ -191,28 +242,18 @@ impl Site {
     fn render_content(
         &self,
         items: &[ContentItem],
-        item_cache: &HashMap<PathBuf, [u8; 32]>,
+        dirty_paths: &std::collections::HashSet<PathBuf>,
     ) -> Result<()> {
         fs::create_dir_all(self.output_dir.join("posts"))?;
-        let mut items_mod = HashSet::new();
-
-        if let Some(cache) = &self.cache {
-            for (path, hash) in item_cache {
-                if cache.file_cache.get(path).unwrap_or(&[0; 32]) != hash {
-                    items_mod.insert(path.clone());
-                }
-            }
-        }
 
         items.par_iter().try_for_each(|item| -> Result<()> {
-            if !self.fresh_build && !items_mod.contains(&item.source) {
+            // Stop immediately if the file didn't change
+            if !dirty_paths.contains(&item.source) {
                 return Ok(());
             }
 
             let tmpl_name = item.template_name();
 
-            // DYNAMIC CONTEXT INJECTION
-            // This matches your templates: project.j2 uses "project", about.j2 uses "page"
             let ctx = match item.collection.as_str() {
                 "projects" => context! { project => item },
                 "pages" => context! { page => item },
@@ -263,7 +304,7 @@ impl Site {
         for (tag, list) in tag_map {
             let ctx = context! {
                 tag => tag.clone(),
-                posts => list, // Keeping 'posts' key for tag.j2 compatibility
+                posts => list,
             };
             match self.env.get_template("tag.j2") {
                 Ok(tmpl) => {
